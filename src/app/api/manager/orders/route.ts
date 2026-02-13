@@ -26,12 +26,16 @@ const createOrderSchema = z.object({
 /* ── GET — list orders ── */
 
 export async function GET(request: NextRequest) {
-  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager"]);
+  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager", "rep", "back_office"]);
   if (!authResult.ok) return authResult.response;
 
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status")?.trim() ?? "";
   const q = searchParams.get("q")?.trim() ?? "";
+
+  // Reps can only see orders they placed
+  const isRep = authResult.session.role === "rep";
+  const creatorFilter = isRep ? "AND o.placed_by_company_user_id = $4" : "";
 
   const result = await getDb().query(
     `
@@ -71,10 +75,13 @@ export async function GET(request: NextRequest) {
     WHERE o.company_id = $1
       AND ($2::text = '' OR o.status = $2)
       AND ($3::text = '' OR o.order_number ILIKE '%' || $3 || '%' OR s.name ILIKE '%' || $3 || '%')
+      ${creatorFilter}
     ORDER BY o.placed_at DESC
     LIMIT 200
     `,
-    [authResult.session.companyId, status, q]
+    isRep
+      ? [authResult.session.companyId, status, q, authResult.session.companyUserId]
+      : [authResult.session.companyId, status, q]
   );
 
   return jsonOk({ orders: result.rows });

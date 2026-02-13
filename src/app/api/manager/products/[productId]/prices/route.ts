@@ -15,7 +15,7 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ productId: string }> }
 ) {
-  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager"]);
+  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager", "back_office"]);
   if (!authResult.ok) return authResult.response;
 
   const parseResult = setPriceSchema.safeParse(await request.json());

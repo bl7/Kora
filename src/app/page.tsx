@@ -60,20 +60,20 @@ export default function Home() {
       <main className="relative z-10 rounded-b-[4.5rem] bg-[#f3f2f6] pb-24 dark:bg-[#0d1117]">
         <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-8 lg:px-12">
         <header className="flex items-center justify-between">
-          <div className="relative h-[82px] w-[82px]">
+          <div className="relative flex h-[80px] w-[190px] items-center">
             <Image
               src="/logo.svg"
-              alt="Kora logo"
-              width={82}
-              height={82}
+              alt="SalesSuite logo"
+              width={190}
+              height={80}
               priority
               className="dark:hidden"
             />
         <Image
               src="/logo-dark.svg"
-              alt="Kora logo dark"
-              width={82}
-              height={82}
+              alt="SalesSuite logo dark"
+              width={190}
+              height={80}
           priority
               className="hidden dark:block"
             />
@@ -99,7 +99,7 @@ export default function Home() {
             leads, and orders.
           </h1>
           <p className="mx-auto mt-7 max-w-2xl text-[clamp(0.95rem,1.3vw,1.35rem)] leading-[1.5] text-zinc-600 dark:text-zinc-400 animate-in fade-in slide-in-from-bottom-4 duration-700" style={{ animationDelay: "0.3s" }}>
-            Kora detects shop arrivals using geofencing, logs visits with time and duration, and lets reps submit orders with totals, straight to back office.
+            SalesSuite detects shop arrivals using geofencing, logs visits with time and duration, and lets reps submit orders with totals, straight to back office.
           </p>
           <div className="mt-8 flex items-center justify-center animate-in fade-in slide-in-from-bottom-4 duration-700" style={{ animationDelay: "0.4s" }}>
             <Link
@@ -149,7 +149,7 @@ export default function Home() {
             />
             <Image
               src="/phones.png"
-              alt="Kora mobile app preview"
+              alt="SalesSuite mobile app preview"
               width={900}
               height={900}
               className="absolute left-1/2 top-[52%] z-20 h-auto w-[min(145vw,150vh)] max-w-none -translate-x-1/2 -translate-y-1/2"
@@ -170,7 +170,7 @@ export default function Home() {
             <InfoCard
               title="Visits"
               subtitle="Verified visits, automatically."
-              description="Kora detects arrival using geofencing, logs time on site, and records outcomes, notes, and photos."
+              description="SalesSuite detects arrival using geofencing, logs time on site, and records outcomes, notes, and photos."
               footer="Less guessing, more accountability."
               delay="0ms"
             />
@@ -213,7 +213,7 @@ export default function Home() {
             </div>
           </div>
           <p className="mx-auto mt-6 max-w-2xl text-center text-sm text-zinc-600 dark:text-zinc-400">
-            Tracking is configurable, Kora focuses on visit verification during working routes, not personal surveillance.
+            Tracking is configurable, SalesSuite focuses on visit verification during working routes, not personal surveillance.
           </p>
         </ScrollSection>
 
@@ -231,7 +231,7 @@ export default function Home() {
 
         <ScrollSection className="mt-16 rounded-[2rem] bg-[#ebe8f2] px-5 py-10 dark:bg-zinc-900">
           <h3 className={`${displaySerif.className} text-center text-4xl leading-tight`}>
-            Teams trust Kora
+            Teams trust SalesSuite
           </h3>
           <div className="mt-8 grid gap-3 md:grid-cols-3">
             <QuoteCard quote="We finally have proof of visits, not just promises." author="Regional Manager, Paint Distribution" delay="0ms" />
@@ -249,13 +249,13 @@ export default function Home() {
           </h3>
           <div className="mt-8 space-y-3">
             {[
-              { q: "How does Kora detect shop visits?", a: "Kora uses geofencing around shop locations and prompts reps when they arrive. Visits record time, duration, and outcome." },
+              { q: "How does SalesSuite detect shop visits?", a: "SalesSuite uses geofencing around shop locations and prompts reps when they arrive. Visits record time, duration, and outcome." },
               { q: "Can reps fake a visit?", a: "Visits require arrival detection and are stamped with time and location. You can also enforce minimum time on site." },
-              { q: "Does Kora track reps all day?", a: "You control tracking mode. Kora is designed for visit verification, not personal surveillance." },
-              { q: "Will it drain battery?", a: "Kora uses Android background location responsibly and only increases accuracy near visit zones." },
+              { q: "Does SalesSuite track reps all day?", a: "You control tracking mode. SalesSuite is designed for visit verification, not personal surveillance." },
+              { q: "Will it drain battery?", a: "SalesSuite uses Android background location responsibly and only increases accuracy near visit zones." },
               { q: "Can reps capture orders from the field?", a: "Yes, reps can build orders with items and quantities, see totals, then submit to back office." },
               { q: "How do orders reach back office?", a: "Orders are delivered to the manager dashboard and can be exported for processing." },
-              { q: "Is Kora Android only?", a: "Yes, Android only for now." },
+              { q: "Is SalesSuite Android only?", a: "Yes, Android only for now." },
             ].map((item) => (
               <FAQItem key={item.q} question={item.q} answer={item.a} />
             ))}
@@ -269,7 +269,7 @@ export default function Home() {
             Request a demo
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-sm text-zinc-600 dark:text-zinc-400">
-            Tell us your team size and workflow, we&apos;ll set up Kora for your route.
+            Tell us your team size and workflow, we&apos;ll set up SalesSuite for your route.
           </p>
           <ContactForm />
         </ScrollSection>
@@ -282,7 +282,7 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-8 pb-8 pt-16 md:px-12">
           <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
             <div className="flex items-start">
-              <Image src="/icon.svg" alt="Kora icon" width={36} height={36} />
+              <Image src="/icon.svg" alt="SalesSuite icon" width={72} height={72} />
             </div>
             <FooterLinks
               title="Platform"
@@ -294,12 +294,15 @@ export default function Home() {
             />
             <FooterLinks title="Connect" links={["Contact", "Support", "WhatsApp"]} />
           </div>
+          <p className="mt-6 text-xs text-center text-zinc-500">
+            SalesSuite is a product of Gopala Sales Management Pvt Ltd.
+          </p>
         </div>
 
-        {/* Big "Kora" wordmark — bottom ~30% buried below visible area */}
-        <div className="relative h-[clamp(5.5rem,18vw,19rem)] overflow-hidden">
-          <p className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 select-none text-[clamp(12rem,32vw,38rem)] leading-[0.82] font-semibold tracking-[-0.03em] text-white/95">
-            Kora
+        {/* Big SalesSuite wordmark — bottom ~30–40% buried below visible area */}
+        <div className="relative h-[clamp(5rem,15vw,16rem)] overflow-hidden">
+          <p className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 select-none text-[clamp(8rem,22vw,24rem)] leading-[0.82] font-semibold tracking-[-0.02em] text-white/95">
+            SalesSuite
           </p>
         </div>
       </footer>

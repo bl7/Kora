@@ -4,6 +4,7 @@ import { getDb } from "@/lib/db";
 import { jsonError, jsonOk } from "@/lib/http";
 import { sendPasswordReset } from "@/lib/mail";
 import { createToken } from "@/lib/tokens";
+import { getBaseUrl } from "@/lib/url";
 
 const schema = z.object({
   email: z.email().max(255),
@@ -25,11 +26,11 @@ export async function POST(request: Request) {
 
   if (userResult.rowCount) {
     const user = userResult.rows[0];
-    const origin = request.headers.get("origin") ?? "http://localhost:3000";
+    const baseUrl = getBaseUrl(request);
 
     try {
       const token = await createToken(user.id, "password_reset", 60 * 60 * 1000); // 1 hour
-      const resetUrl = `${origin}/auth/reset-password?token=${token}`;
+      const resetUrl = `${baseUrl}/auth/reset-password?token=${token}`;
       await sendPasswordReset(email, user.full_name, resetUrl);
     } catch (err) {
       console.error("[mail] Failed to send password reset:", err);

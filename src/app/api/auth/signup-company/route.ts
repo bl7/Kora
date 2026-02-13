@@ -7,6 +7,7 @@ import { jsonError, jsonOk } from "@/lib/http";
 import { sendEmailVerification } from "@/lib/mail";
 import { slugify } from "@/lib/slug";
 import { createToken } from "@/lib/tokens";
+import { getBaseUrl } from "@/lib/url";
 
 const signupSchema = z.object({
   companyName: z.string().min(2).max(120),
@@ -57,10 +58,10 @@ export async function POST(request: Request) {
     await client.query("COMMIT");
 
     // Send verification email (fire-and-forget)
-    const origin = request.headers.get("origin") ?? "http://localhost:3000";
+    const baseUrl = getBaseUrl(request);
     createToken(userId, "email_verify", 24 * 60 * 60 * 1000)
       .then((token) => {
-        const verifyUrl = `${origin}/api/auth/verify-email?token=${token}`;
+        const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${token}`;
         return sendEmailVerification(email, fullName, verifyUrl);
       })
       .catch((err) => console.error("[mail] Failed to send verification email:", err));

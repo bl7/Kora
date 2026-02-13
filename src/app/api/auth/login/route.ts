@@ -14,6 +14,7 @@ type MembershipRow = {
   user_id: string;
   full_name: string;
   password_hash: string;
+  email_verified_at: Date | null;
   company_id: string;
   company_slug: string;
   company_name: string;
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
       u.id AS user_id,
       u.full_name,
       u.password_hash,
+      u.email_verified_at,
       c.id AS company_id,
       c.slug AS company_slug,
       c.name AS company_name,
@@ -61,6 +63,14 @@ export async function POST(request: Request) {
   const passwordValid = await verifyPassword(password, row.password_hash);
   if (!passwordValid) {
     return jsonError(401, "Invalid credentials");
+  }
+
+  // Check if email is verified
+  if (!row.email_verified_at) {
+    return jsonError(
+      403,
+      "Please verify your email address before logging in. Check your inbox for the verification link."
+    );
   }
 
   await db.query("UPDATE users SET last_login_at = NOW() WHERE id = $1", [row.user_id]);

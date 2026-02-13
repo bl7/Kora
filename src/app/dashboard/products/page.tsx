@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "../_lib/session-context";
 
 type Product = {
   id: string;
@@ -18,6 +19,11 @@ type Product = {
 type ProductListResponse = { ok: boolean; error?: string; products?: Product[] };
 
 export default function ProductsPage() {
+  const session = useSession();
+  const canManageProducts =
+    session.user.role === "boss" ||
+    session.user.role === "manager" ||
+    session.user.role === "back_office";
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,12 +138,17 @@ export default function ProductsPage() {
             Manage your product catalog and pricing.
           </p>
         </div>
-        <button
-          onClick={() => { setShowForm(!showForm); setEditingId(null); }}
-          className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
-          {showForm ? "Cancel" : "+ Add Product"}
-        </button>
+        {canManageProducts && (
+          <button
+            onClick={() => {
+              setShowForm(!showForm);
+              setEditingId(null);
+            }}
+            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            {showForm ? "Cancel" : "+ Add Product"}
+          </button>
+        )}
       </div>
 
       {error && (
@@ -147,7 +158,7 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {showForm && (
+      {showForm && canManageProducts && (
         <div className="mb-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="mb-4 text-base font-semibold text-zinc-900 dark:text-zinc-100">New Product</h2>
           <CreateProductForm disabled={working} onSubmit={onCreate} />
@@ -207,24 +218,34 @@ export default function ProductsPage() {
                       <td className="px-5 py-3.5 font-mono text-xs text-zinc-600 dark:text-zinc-400">{p.sku}</td>
                       <td className="px-5 py-3.5 text-zinc-600 dark:text-zinc-400">{p.unit}</td>
                       <td className="px-5 py-3.5">
-                        {priceEditId === p.id ? (
-                          <InlinePriceForm
-                            currentPrice={p.current_price}
-                            currencyCode={p.currency_code ?? "NPR"}
-                            disabled={working}
-                            onSave={(price, currency) => onSetPrice(p.id, price, currency)}
-                            onCancel={() => setPriceEditId(null)}
-                          />
+                        {canManageProducts ? (
+                          priceEditId === p.id ? (
+                            <InlinePriceForm
+                              currentPrice={p.current_price}
+                              currencyCode={p.currency_code ?? "NPR"}
+                              disabled={working}
+                              onSave={(price, currency) => onSetPrice(p.id, price, currency)}
+                              onCancel={() => setPriceEditId(null)}
+                            />
+                          ) : (
+                            <button
+                              onClick={() => setPriceEditId(p.id)}
+                              className="text-zinc-900 hover:underline dark:text-zinc-100"
+                              title="Click to update price"
+                            >
+                              {p.current_price ? (
+                                `${p.currency_code ?? "NPR"} ${Number(p.current_price).toLocaleString()}`
+                              ) : (
+                                <span className="text-zinc-400">Set price</span>
+                              )}
+                            </button>
+                          )
+                        ) : p.current_price ? (
+                          <span className="text-zinc-900 dark:text-zinc-100">
+                            {`${p.currency_code ?? "NPR"} ${Number(p.current_price).toLocaleString()}`}
+                          </span>
                         ) : (
-                          <button
-                            onClick={() => setPriceEditId(p.id)}
-                            className="text-zinc-900 hover:underline dark:text-zinc-100"
-                            title="Click to update price"
-                          >
-                            {p.current_price
-                              ? `${p.currency_code ?? "NPR"} ${Number(p.current_price).toLocaleString()}`
-                              : <span className="text-zinc-400">Set price</span>}
-                          </button>
+                          <span className="text-zinc-400">No price set</span>
                         )}
                       </td>
                       <td className="px-5 py-3.5">
@@ -237,28 +258,34 @@ export default function ProductsPage() {
                         </span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => { setEditingId(p.id); setShowForm(false); setPriceEditId(null); }}
-                            className="rounded-md border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => onUpdate(p.id, { isActive: !p.is_active })}
-                            disabled={working}
-                            className="rounded-md border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
-                          >
-                            {p.is_active ? "Deactivate" : "Activate"}
-                          </button>
-                          <button
-                            onClick={() => onDelete(p.id)}
-                            disabled={working}
-                            className="rounded-md border border-red-200 px-3 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50 dark:border-red-800/40 dark:text-red-400 dark:hover:bg-red-900/20"
-                          >
-                            Delete
-                          </button>
-                        </div>
+                        {canManageProducts && (
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingId(p.id);
+                                setShowForm(false);
+                                setPriceEditId(null);
+                              }}
+                              className="rounded-md border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => onUpdate(p.id, { isActive: !p.is_active })}
+                              disabled={working}
+                              className="rounded-md border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                            >
+                              {p.is_active ? "Deactivate" : "Activate"}
+                            </button>
+                            <button
+                              onClick={() => onDelete(p.id)}
+                              disabled={working}
+                              className="rounded-md border border-red-200 px-3 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50 dark:border-red-800/40 dark:text-red-400 dark:hover:bg-red-900/20"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </>
                   )}

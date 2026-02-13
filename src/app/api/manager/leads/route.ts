@@ -19,12 +19,16 @@ const createLeadSchema = z.object({
 /* ── GET — list leads ── */
 
 export async function GET(request: NextRequest) {
-  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager"]);
+  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager", "rep", "back_office"]);
   if (!authResult.ok) return authResult.response;
 
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status")?.trim() ?? "";
   const q = searchParams.get("q")?.trim() ?? "";
+
+  // Reps can only see leads they created
+  const isRep = authResult.session.role === "rep";
+  const creatorFilter = isRep ? "AND l.created_by_company_user_id = $4" : "";
 
   const result = await getDb().query(
     `
@@ -49,10 +53,13 @@ export async function GET(request: NextRequest) {
     WHERE l.company_id = $1
       AND ($2::text = '' OR l.status = $2)
       AND ($3::text = '' OR l.name ILIKE '%' || $3 || '%' OR l.contact_name ILIKE '%' || $3 || '%' OR COALESCE(l.phone, '') ILIKE '%' || $3 || '%')
+      ${creatorFilter}
     ORDER BY l.created_at DESC
     LIMIT 200
     `,
-    [authResult.session.companyId, status, q]
+    isRep
+      ? [authResult.session.companyId, status, q, authResult.session.companyUserId]
+      : [authResult.session.companyId, status, q]
   );
 
   return jsonOk({ leads: result.rows });
@@ -61,7 +68,7 @@ export async function GET(request: NextRequest) {
 /* ── POST — create lead ── */
 
 export async function POST(request: NextRequest) {
-  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager"]);
+  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager", "rep", "back_office"]);
   if (!authResult.ok) return authResult.response;
 
   const parseResult = createLeadSchema.safeParse(await request.json());
@@ -83,9 +90,10 @@ export async function POST(request: NextRequest) {
         email,
         address,
         assigned_rep_company_user_id,
+        created_by_company_user_id,
         notes
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
       `,
       [
@@ -97,6 +105,7 @@ export async function POST(request: NextRequest) {
         input.email ?? null,
         input.address ?? null,
         input.assignedRepCompanyUserId ?? null,
+        authResult.session.companyUserId,
         input.notes ?? null,
       ]
     );

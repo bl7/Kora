@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSession } from "./_lib/session-context";
 import type { Staff, StaffListResponse, Shop, ShopListResponse } from "./_lib/types";
@@ -27,11 +28,19 @@ type Lead = {
 
 export default function OverviewPage() {
   const session = useSession();
+  const router = useRouter();
   const [staff, setStaff] = useState<Staff[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Redirect reps away from overview
+  useEffect(() => {
+    if (session.user.role === "rep") {
+      router.push("/dashboard/orders");
+    }
+  }, [session.user.role, router]);
 
   useEffect(() => {
     let cancelled = false;

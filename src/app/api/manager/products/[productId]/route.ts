@@ -18,7 +18,7 @@ export async function GET(
   request: NextRequest,
   context: { params: Promise<{ productId: string }> }
 ) {
-  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager"]);
+  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager", "rep", "back_office"]);
   if (!authResult.ok) return authResult.response;
 
   const { productId } = await context.params;
@@ -49,7 +49,7 @@ export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ productId: string }> }
 ) {
-  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager"]);
+  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager", "back_office"]);
   if (!authResult.ok) return authResult.response;
 
   const parseResult = updateProductSchema.safeParse(await request.json());
@@ -95,7 +95,7 @@ export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ productId: string }> }
 ) {
-  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager"]);
+  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager", "back_office"]);
   if (!authResult.ok) return authResult.response;
 
   const { productId } = await context.params;

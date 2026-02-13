@@ -1,20 +1,29 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type LoginResponse = {
   ok: boolean;
   error?: string;
 };
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    if (searchParams.get("verified") === "true") {
+      setSuccess("Email verified successfully! You can now log in.");
+    }
+  }, [searchParams]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -45,6 +54,22 @@ export default function LoginPage() {
     <div className="h-screen overflow-hidden bg-[#f3f2f6] px-6 py-6 dark:bg-[#0d1117]">
       <div className="mx-auto flex h-full max-w-2xl items-center">
         <div className="w-full text-center">
+          <div className="mb-6 flex justify-center">
+            <Image
+              src="/logo.svg"
+              alt="SalesSuite"
+              width={90}
+              height={90}
+              className="dark:hidden"
+            />
+            <Image
+              src="/logo-dark.svg"
+              alt="SalesSuite"
+              width={90}
+              height={90}
+              className="hidden dark:block"
+            />
+          </div>
           <h1 className="text-[64px] leading-none font-serif text-zinc-900 md:text-[56px] dark:text-zinc-100">
             Welcome back
           </h1>
@@ -87,6 +112,7 @@ export default function LoginPage() {
             </Field>
 
             {error ? <p className="text-center text-sm text-red-600">{error}</p> : null}
+            {success ? <p className="text-center text-sm text-emerald-600">{success}</p> : null}
 
             <div className="text-right">
               <button
@@ -167,6 +193,24 @@ function EyeOffIcon() {
       <line x1="2" y1="2" x2="22" y2="22" />
       <path d="M14.1 14.1a3 3 0 0 1-4.2-4.2" />
     </svg>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="h-screen overflow-hidden bg-[#f3f2f6] px-6 py-6 dark:bg-[#0d1117]">
+        <div className="mx-auto flex h-full max-w-2xl items-center">
+          <div className="w-full text-center">
+            <h1 className="text-[64px] leading-none font-serif text-zinc-900 md:text-[56px] dark:text-zinc-100">
+              Welcome back
+            </h1>
+          </div>
+        </div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }
 

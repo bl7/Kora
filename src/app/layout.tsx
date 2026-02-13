@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Kora Dashboard",
-  description: "Kora manager web dashboard",
+  title: "SalesSuite Dashboard",
+  description: "SalesSuite manager web dashboard",
 };
 
 export default function RootLayout({

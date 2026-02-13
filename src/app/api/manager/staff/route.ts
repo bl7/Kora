@@ -5,7 +5,9 @@ import { z } from "zod";
 import { hashPassword } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { ensureRole, getRequestSession, jsonError, jsonOk } from "@/lib/http";
-import { sendStaffCredentials } from "@/lib/mail";
+import { sendStaffCredentials, sendEmailVerification } from "@/lib/mail";
+import { createToken } from "@/lib/tokens";
+import { getBaseUrl } from "@/lib/url";
 
 const createStaffSchema = z.object({
   fullName: z.string().min(2).max(120),
@@ -122,8 +124,8 @@ export async function POST(request: NextRequest) {
     await client.query("COMMIT");
 
     // Send credentials email (fire-and-forget, don't block the response)
-    const origin = request.headers.get("origin") ?? request.headers.get("x-forwarded-host") ?? "http://localhost:3000";
-    const loginUrl = `${origin}/auth/login`;
+    const baseUrl = getBaseUrl(request);
+    const loginUrl = `${baseUrl}/auth/login`;
 
     // Look up company name for the email
     const companyRow = await db.query<{ name: string }>(
@@ -132,9 +134,18 @@ export async function POST(request: NextRequest) {
     );
     const companyName = companyRow.rows[0]?.name ?? "your company";
 
+    // Send credentials email (fire-and-forget)
     sendStaffCredentials(email, input.fullName, companyName, input.password, loginUrl).catch(
       (err) => console.error("[mail] Failed to send staff credentials:", err)
     );
+
+    // Send verification email (fire-and-forget)
+    createToken(userId, "email_verify", 24 * 60 * 60 * 1000)
+      .then((token) => {
+        const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${token}`;
+        return sendEmailVerification(email, input.fullName, verifyUrl);
+      })
+      .catch((err) => console.error("[mail] Failed to send verification email:", err));
 
     return jsonOk(
       {

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -15,6 +16,8 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [signupEmail, setSignupEmail] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -56,13 +59,103 @@ export default function SignupPage() {
       return;
     }
 
-    router.push("/auth/login");
+    setSignupEmail(email);
+    setSuccess(true);
+  }
+
+  if (success) {
+    return (
+      <div className="h-screen overflow-hidden bg-[#f3f2f6] px-6 py-6 dark:bg-[#0d1117]">
+        <div className="mx-auto flex h-full max-w-2xl items-center">
+          <div className="w-full text-center">
+            <div className="mb-6 flex justify-center">
+              <Image
+                src="/logo.svg"
+                alt="SalesSuite"
+                width={90}
+                height={90}
+                className="dark:hidden"
+              />
+              <Image
+                src="/logo-dark.svg"
+                alt="SalesSuite"
+                width={90}
+                height={90}
+                className="hidden dark:block"
+              />
+            </div>
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="32"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-emerald-600 dark:text-emerald-400"
+              >
+                <path d="M20 6L9 17l-5-5" />
+              </svg>
+            </div>
+            <h1 className="text-[64px] leading-none font-serif text-zinc-900 md:text-[56px] dark:text-zinc-100">
+              Sign up successful!
+            </h1>
+            <p className="mt-4 text-[30px] text-zinc-500 md:text-[18px] dark:text-zinc-400">
+              We&apos;ve sent a verification email to <strong className="text-zinc-700 dark:text-zinc-200">{signupEmail}</strong>
+            </p>
+            <p className="mt-3 text-[24px] text-zinc-600 md:text-[16px] dark:text-zinc-400">
+              Please check your inbox and click the verification link to activate your account.
+            </p>
+            <div className="mt-8 space-y-3">
+              <button
+                onClick={() => router.push("/auth/login")}
+                className="inline-flex h-14 min-w-64 items-center justify-center rounded-full bg-zinc-800 px-10 text-[20px] font-medium text-white shadow-[0_10px_28px_rgba(0,0,0,0.18)] md:text-[18px] dark:bg-zinc-100 dark:text-zinc-900"
+              >
+                Go to login
+              </button>
+              <p className="text-[20px] text-zinc-500 md:text-[14px] dark:text-zinc-400">
+                Didn&apos;t receive the email? Check your spam folder or{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSuccess(false);
+                    setError(null);
+                  }}
+                  className="font-medium text-zinc-700 underline underline-offset-2 dark:text-zinc-200"
+                >
+                  try again
+                </button>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="h-screen overflow-hidden bg-[#f3f2f6] px-6 py-6 dark:bg-[#0d1117]">
       <div className="mx-auto flex h-full max-w-2xl items-center">
         <div className="w-full text-center">
+          <div className="mb-6 flex justify-center">
+            <Image
+              src="/logo.svg"
+              alt="SalesSuite"
+              width={90}
+              height={90}
+              className="dark:hidden"
+            />
+            <Image
+              src="/logo-dark.svg"
+              alt="SalesSuite"
+              width={90}
+              height={90}
+              className="hidden dark:block"
+            />
+          </div>
           <h1 className="text-[64px] leading-none font-serif text-zinc-900 md:text-[56px] dark:text-zinc-100">
             Get started
           </h1>

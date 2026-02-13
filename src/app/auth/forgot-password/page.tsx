@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -34,6 +35,22 @@ export default function ForgotPasswordPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#f3f2f6] px-4 dark:bg-[#0d1117]">
       <div className="w-full max-w-[400px]">
+        <div className="mb-6 flex justify-center">
+          <Image
+            src="/logo.svg"
+            alt="SalesSuite"
+            width={72}
+            height={72}
+            className="dark:hidden"
+          />
+          <Image
+            src="/logo-dark.svg"
+            alt="SalesSuite"
+            width={72}
+            height={72}
+            className="hidden dark:block"
+          />
+        </div>
         <h1 className="text-center text-[22px] font-semibold text-zinc-900 dark:text-zinc-100">
           Reset your password
         </h1>

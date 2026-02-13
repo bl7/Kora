@@ -33,25 +33,40 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     router.push("/auth/login");
   }
 
+  // Filter nav items based on role
+  const isRep = session.user.role === "rep";
+  const visibleNavItems = isRep
+    ? navItems.filter((item) => 
+        item.href !== "/dashboard" && 
+        item.href !== "/dashboard/staff" && 
+        item.href !== "/dashboard/shops" && 
+        item.href !== "/dashboard/assignments"
+      )
+    : navItems;
+
+  // Role badge text
+  const roleLabel = 
+    session.user.role === "boss" ? "Boss" :
+    session.user.role === "manager" ? "Manager" :
+    session.user.role === "rep" ? "Rep" :
+    session.user.role === "back_office" ? "Back Office" : "User";
+
   return (
     <div className="flex h-screen bg-zinc-100 dark:bg-[#0d1117]">
       {/* Sidebar */}
       <aside className="flex w-[260px] shrink-0 flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         {/* Logo */}
-        <div className="flex h-16 items-center gap-2.5 border-b border-zinc-200 px-5 dark:border-zinc-800">
-          <Image src="/icon.svg" alt="Kora" width={28} height={28} className="dark:hidden" />
-          <Image src="/logo-dark.svg" alt="Kora" width={28} height={28} className="hidden dark:block" />
-          <span className="text-[15px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-            Kora
-          </span>
+        <div className="flex h-24 items-center gap-2.5 border-b border-zinc-200 px-5 dark:border-zinc-800">
+          <Image src="/logo.svg" alt="SalesSuite" width={96} height={96} className="dark:hidden" />
+          <Image src="/logo-dark.svg" alt="SalesSuite" width={96} height={96} className="hidden dark:block" />
           <span className="ml-auto rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-            Manager
+            {roleLabel}
           </span>
         </div>
 
         {/* Nav */}
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const active =
               item.href === "/dashboard"
                 ? pathname === "/dashboard"
