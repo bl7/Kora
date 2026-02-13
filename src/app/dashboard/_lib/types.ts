@@ -1,0 +1,43 @@
+export type MeResponse = {
+  ok: boolean;
+  error?: string;
+  user?: {
+    id: string;
+    fullName: string;
+    email: string;
+    role: "boss" | "manager" | "rep" | "back_office";
+    companyUserId: string;
+  };
+  company?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+};
+
+export type Staff = {
+  company_user_id: string;
+  user_id: string;
+  full_name: string;
+  email: string;
+  role: "boss" | "manager" | "rep" | "back_office";
+  status: "active" | "inactive";
+  phone: string | null;
+  manager_company_user_id: string | null;
+  created_at: string;
+};
+
+export type Shop = {
+  id: string;
+  external_shop_code: string | null;
+  name: string;
+  latitude: number;
+  longitude: number;
+  geofence_radius_m: number;
+  is_active: boolean;
+  assignment_count: number;
+};
+
+export type StaffListResponse = { ok: boolean; error?: string; staff?: Staff[] };
+export type ShopListResponse = { ok: boolean; error?: string; shops?: Shop[] };
+
