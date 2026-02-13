@@ -133,3 +133,52 @@ export async function sendStaffCredentials(
   });
 }
 
+export async function sendContactFormNotification(
+  to: string,
+  name: string,
+  company: string,
+  email: string,
+  phone: string,
+  teamSize: string,
+  message: string
+) {
+  await sendMail({
+    to,
+    subject: `New demo request from ${name} at ${company}`,
+    text: `New demo request:\n\nName: ${name}\nCompany: ${company}\nEmail: ${email}\nPhone: ${phone}\nTeam Size: ${teamSize}\n\nMessage:\n${message}\n\n— Kora Demo Request`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;">
+        <h2 style="font-size:20px;margin:0 0 16px;">New Demo Request</h2>
+        <div style="background:#f4f4f5;padding:20px;border-radius:8px;margin:16px 0;">
+          <p style="margin:0 0 8px;"><strong>Name:</strong> ${name}</p>
+          <p style="margin:0 0 8px;"><strong>Company:</strong> ${company}</p>
+          <p style="margin:0 0 8px;"><strong>Email:</strong> <a href="mailto:${email}">${email}</a></p>
+          <p style="margin:0 0 8px;"><strong>Phone:</strong> <a href="tel:${phone}">${phone}</a></p>
+          <p style="margin:0;"><strong>Team Size:</strong> ${teamSize}</p>
+        </div>
+        <div style="background:#f4f4f5;padding:20px;border-radius:8px;margin:16px 0;">
+          <p style="margin:0 0 8px;"><strong>Message:</strong></p>
+          <p style="margin:0;white-space:pre-wrap;">${message.replace(/\n/g, "<br>")}</p>
+        </div>
+        <p style="margin-top:24px;color:#a1a1aa;font-size:12px;">— Kora Demo Request</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendContactFormConfirmation(to: string, name: string) {
+  await sendMail({
+    to,
+    subject: "We've received your message",
+    text: `Hi ${name},\n\nThank you for reaching out to Kora. We've received your message and will get back to you as soon as possible.\n\n— Kora Team`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;">
+        <h2 style="font-size:20px;margin:0 0 16px;">Thank you for reaching out!</h2>
+        <p>Hi ${name},</p>
+        <p>We've received your message and will get back to you as soon as possible.</p>
+        <p style="margin-top:24px;color:#a1a1aa;font-size:12px;">— Kora Team</p>
+      </div>
+    `,
+  });
+}
+

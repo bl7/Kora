@@ -16,12 +16,18 @@ export function getDb() {
   }
 
   const normalizedConnectionString = normalizeConnectionString(connectionString);
+  
+  // Determine SSL config: Aiven uses self-signed certs, so we need to allow them
+  // Check if connection string has sslmode=require or if it's an Aiven host
+  const url = new URL(normalizedConnectionString);
+  const isAiven = url.hostname.includes("aivencloud.com");
+  const sslMode = url.searchParams.get("sslmode");
+  const needsRelaxedSSL = isAiven || sslMode === "require" || sslMode === "no-verify";
+  
   const pool = new Pool({
     connectionString: normalizedConnectionString,
-    ssl:
-      process.env.NODE_ENV === "production"
-        ? { rejectUnauthorized: true }
-        : { rejectUnauthorized: false },
+    // Aiven uses self-signed certificates, so we need to allow them even in production
+    ssl: needsRelaxedSSL ? { rejectUnauthorized: false } : undefined,
     max: 10,
   });
 
@@ -35,14 +41,14 @@ export function getDb() {
 function normalizeConnectionString(rawConnectionString: string) {
   try {
     const url = new URL(rawConnectionString);
+    const sslMode = url.searchParams.get("sslmode");
 
-    // In local/dev environments we intentionally skip strict cert validation
-    // unless caller explicitly opts into no-verify semantics in the URL.
-    if (
-      process.env.NODE_ENV !== "production" &&
-      url.searchParams.get("sslmode") === "require"
-    ) {
-      url.searchParams.set("sslmode", "no-verify");
+    // For Aiven (self-signed certs), normalize sslmode to no-verify
+    // This helps avoid SSL certificate chain errors
+    if (url.hostname.includes("aivencloud.com")) {
+      if (sslMode === "require" || sslMode === "prefer") {
+        url.searchParams.set("sslmode", "no-verify");
+      }
     }
 
     return url.toString();

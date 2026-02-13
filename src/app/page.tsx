@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { Cormorant_Garamond } from "next/font/google";
 
 const displaySerif = Cormorant_Garamond({
@@ -23,26 +26,26 @@ export default function Home() {
               priority
               className="dark:hidden"
             />
-            <Image
+        <Image
               src="/logo-dark.svg"
               alt="Kora logo dark"
               width={82}
               height={82}
-              priority
+          priority
               className="hidden dark:block"
             />
           </div>
           <Link
-            href="/auth/signup"
+            href="#contact"
             className="rounded-full bg-zinc-800 px-10 py-3 text-[16px] font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
           >
-            Sign up
+            Request demo
           </Link>
         </header>
 
         <section className="pt-16 pb-8 text-center">
           <div className="mx-auto inline-flex items-center rounded-full border border-zinc-200 bg-white/70 px-6 py-2 text-[14px] text-zinc-700 shadow-sm dark:border-zinc-700 dark:bg-zinc-800/70 dark:text-zinc-200">
-            Built for modern field sales teams
+            Built for distributors and sales reps
           </div>
           <h1
             className={`${displaySerif.className} mx-auto mt-8 max-w-[920px] text-[clamp(3.8rem,8vw,8.2rem)] leading-[0.95] tracking-[-0.02em] text-zinc-900 dark:text-zinc-100`}
@@ -51,19 +54,29 @@ export default function Home() {
             <br />
             leads, and orders.
           </h1>
-          <p className="mx-auto mt-7 max-w-2xl text-[clamp(1.1rem,1.8vw,2rem)] leading-[1.35] text-zinc-500 dark:text-zinc-400">
-            Kora helps managers track staff activity, convert leads faster,
+          <p className="mx-auto mt-7 max-w-2xl text-[clamp(1rem,1.4vw,1.5rem)] leading-[1.4] text-zinc-500 dark:text-zinc-400">
+            Kora auto-detects shop arrivals using geofencing, logs visits with time and duration,
             <br />
-            and capture orders with confidence.
+            and lets reps capture orders with totals, then sends them to back office.
           </p>
-          <div className="mt-8 flex items-center justify-center gap-3">
+          <div className="mt-8 flex flex-col items-center justify-center gap-3">
             <Link
-              href="/auth/signup"
+              href="#contact"
               className="rounded-full bg-zinc-800 px-11 py-3 text-[17px] font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
             >
-              Sign up
+              Request demo
             </Link>
-        </div>
+            <Link
+              href="#how-it-works"
+              className="text-[15px] font-medium text-zinc-600 underline underline-offset-2 dark:text-zinc-400"
+            >
+              See how it works
+            </Link>
+          </div>
+
+          <p className="mx-auto mt-12 max-w-2xl text-center text-[clamp(1rem,1.5vw,1.4rem)] leading-relaxed text-zinc-600 dark:text-zinc-400">
+            Visits are verified automatically, orders are captured on the spot, managers see everything instantly.
+          </p>
 
           <div className="relative mx-auto mt-8 h-[82vh] max-w-none overflow-visible">
             <div
@@ -119,24 +132,50 @@ export default function Home() {
             to final order.
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-sm text-zinc-600 dark:text-zinc-400">
-            One platform for rep productivity, lead conversion, and back-office clarity.
+            Everything a field rep needs, arrival detection, visit logs, lead capture, and order submission.
           </p>
           <div className="mt-7 grid gap-4 md:grid-cols-3">
             <InfoCard
               title="Visits"
-              subtitle="Verified Activity"
-              description="Track real field movement with geofence-ready shop records."
+              subtitle="Verified visits, automatically."
+              description="Kora detects arrival using geofencing, logs time on site, and records outcomes, notes, and photos."
+              footer="Less guessing, more accountability."
             />
             <InfoCard
               title="Leads"
-              subtitle="Pipeline Control"
-              description="Move prospects through stages and convert them to customers."
+              subtitle="Capture new shops in seconds."
+              description="Add a lead with name, contact, location, and notes. Convert to a customer when you're ready."
             />
             <InfoCard
               title="Orders"
-              subtitle="Fast Handoff"
-              description="Capture orders quickly and pass them to back office without chaos."
+              subtitle="Fast order capture with totals."
+              description="Build an order with items and quantities, see the grand total, then submit to back office in one tap."
+              footer="Exports available for easy processing."
             />
+          </div>
+        </section>
+
+        {/* How it works strip */}
+        <section id="how-it-works" className="mx-auto mt-16 max-w-4xl">
+          <div className="grid grid-cols-3 gap-6 rounded-2xl border border-zinc-200 bg-white px-8 py-6 dark:border-zinc-700 dark:bg-zinc-800">
+            <div className="text-center">
+              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-xl font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300">
+                1
+              </div>
+              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Arrive</p>
+            </div>
+            <div className="text-center">
+              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-xl font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300">
+                2
+              </div>
+              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Log visit</p>
+            </div>
+            <div className="text-center">
+              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-xl font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300">
+                3
+              </div>
+              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Send order</p>
+            </div>
           </div>
         </section>
 
@@ -148,7 +187,7 @@ export default function Home() {
             all in one place.
           </h3>
           <p className="mx-auto mt-3 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
-            Monitor shop coverage, missed visits, and rep productivity across your team.
+            See visits per rep, shops covered vs missed, new leads captured, and orders submitted, by day and territory.
           </p>
         </section>
 
@@ -157,9 +196,9 @@ export default function Home() {
             Teams trust Kora
           </h3>
           <div className="mt-8 grid gap-3 md:grid-cols-3">
-            <QuoteCard quote="Our reps finally log visits consistently." author="Regional Manager" />
-            <QuoteCard quote="Lead follow-ups are faster and more structured now." author="Sales Ops" />
-            <QuoteCard quote="Order capture and handoff became painless." author="Back Office Lead" />
+            <QuoteCard quote="We finally have proof of visits, not just promises." author="Regional Manager" />
+            <QuoteCard quote="Lead follow-ups are cleaner because every note is logged." author="Sales Ops" />
+            <QuoteCard quote="Orders come through with totals and item lists, no more messy calls." author="Back Office Lead" />
           </div>
         </section>
 
@@ -172,25 +211,29 @@ export default function Home() {
           </h3>
           <div className="mt-8 space-y-3">
             {[
-              "What is Kora?",
-              "Can managers monitor staff activity in real time?",
-              "Can we assign shops directly to reps?",
-              "Does Kora support lead-to-customer conversion?",
-              "Can reps capture orders from the field?",
-              "Can we export data for back office or ERP?",
+              { q: "How does Kora detect shop visits?", a: "Kora uses geofencing around shop locations and prompts reps when they arrive. Visits record time, duration, and outcome." },
+              { q: "Can reps fake a visit?", a: "Visits require arrival detection and are stamped with time and location. You can also enforce minimum time on site." },
+              { q: "Does Kora track reps all day?", a: "You control tracking mode. Kora is designed for visit verification, not personal surveillance." },
+              { q: "Will it drain battery?", a: "Kora uses Android background location responsibly and only increases accuracy near visit zones." },
+              { q: "Can reps capture orders from the field?", a: "Yes, reps can build orders with items and quantities, see totals, then submit to back office." },
+              { q: "How do orders reach back office?", a: "Orders are delivered to the manager dashboard and can be exported for processing." },
+              { q: "Is Kora Android only?", a: "Yes, Android only for now." },
             ].map((item) => (
-              <button
-                key={item}
-                type="button"
-                className={`${displaySerif.className} flex w-full items-center justify-between rounded-2xl border border-zinc-200/80 bg-[#f7f7f8] px-7 py-5 text-left text-[22px] text-zinc-800 shadow-[0_1px_0_rgba(0,0,0,0.03)] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100`}
-              >
-                <span>{item}</span>
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-200 text-[14px] text-zinc-500 dark:bg-zinc-700 dark:text-zinc-300">
-                  v
-                </span>
-              </button>
+              <FAQItem key={item.q} question={item.q} answer={item.a} />
             ))}
           </div>
+        </section>
+
+        {/* Contact Form Section */}
+        <section id="contact" className="mx-auto mt-20 mb-20 max-w-2xl">
+          <p className="text-center text-xs uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">Request a Demo</p>
+          <h2 className={`${displaySerif.className} mt-2 text-center text-4xl leading-tight`}>
+            Request a demo
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-center text-sm text-zinc-600 dark:text-zinc-400">
+            Tell us your team size and workflow, we&apos;ll set up Kora for your route.
+          </p>
+          <ContactForm />
         </section>
 
         </div>{/* close inner max-w-7xl wrapper */}
@@ -226,12 +269,15 @@ export default function Home() {
   );
 }
 
-function InfoCard(props: { title: string; subtitle: string; description: string }) {
+function InfoCard(props: { title: string; subtitle: string; description: string; footer?: string }) {
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white p-5 text-left shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
       <p className="text-4xl font-semibold text-zinc-900 dark:text-zinc-100">{props.title}</p>
       <p className="mt-2 text-xl font-serif text-zinc-900 dark:text-zinc-100">{props.subtitle}</p>
       <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{props.description}</p>
+      {props.footer && (
+        <p className="mt-3 text-xs font-medium text-zinc-500 dark:text-zinc-400">{props.footer}</p>
+      )}
     </div>
   );
 }
@@ -244,6 +290,176 @@ function QuoteCard(props: { quote: string; author: string }) {
         {props.author}
       </p>
     </div>
+  );
+}
+
+function FAQItem(props: { question: string; answer: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-2xl border border-zinc-200/80 bg-[#f7f7f8] shadow-[0_1px_0_rgba(0,0,0,0.03)] dark:border-zinc-700 dark:bg-zinc-900">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className={`${displaySerif.className} flex w-full items-center justify-between px-7 py-5 text-left text-[22px] text-zinc-800 dark:text-zinc-100`}
+      >
+        <span>{props.question}</span>
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-[14px] text-zinc-500 transition-transform dark:bg-zinc-700 dark:text-zinc-300 ${open ? "rotate-180" : ""}`}>
+          v
+        </span>
+      </button>
+      {open && (
+        <div className="border-t border-zinc-200/80 px-7 pb-5 pt-3 dark:border-zinc-700">
+          <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">{props.answer}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ContactForm() {
+  const [name, setName] = useState("");
+  const [company, setCompany] = useState("");
+  const [email, setEmail] = useState("");
+  const [phoneDigits, setPhoneDigits] = useState("");
+  const [teamSize, setTeamSize] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    const res = await fetch("/api/contact", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name,
+        company,
+        email,
+        phone: `+977${phoneDigits}`,
+        teamSize,
+        message,
+      }),
+    });
+
+    const data = (await res.json()) as { ok: boolean; error?: string };
+    setLoading(false);
+
+    if (!res.ok || !data.ok) {
+      setError(data.error ?? "Something went wrong. Please try again.");
+      return;
+    }
+
+    setSuccess(true);
+    setName("");
+    setCompany("");
+    setEmail("");
+    setPhoneDigits("");
+    setTeamSize("");
+    setMessage("");
+  }
+
+  if (success) {
+    return (
+      <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50 px-6 py-8 text-center dark:border-emerald-800/40 dark:bg-emerald-900/20">
+        <p className={`${displaySerif.className} text-xl text-emerald-700 dark:text-emerald-400`}>
+          Thank you for reaching out!
+        </p>
+        <p className="mt-2 text-sm text-emerald-600 dark:text-emerald-300">
+          We&apos;ve received your message and will get back to you soon.
+        </p>
+        <button
+          onClick={() => setSuccess(false)}
+          className="mt-4 text-sm font-medium text-emerald-700 underline dark:text-emerald-400"
+        >
+          Send another message
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="mt-8 space-y-4">
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800/40 dark:bg-red-900/20 dark:text-red-400">
+          {error}
+        </div>
+      )}
+
+      <input
+        required
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Your name"
+        className="w-full rounded-2xl border border-zinc-200 bg-[#f7f7f8] px-5 py-4 text-[18px] text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-400 focus:bg-white focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
+      />
+
+      <input
+        required
+        value={company}
+        onChange={(e) => setCompany(e.target.value)}
+        placeholder="Company / Business name"
+        className="w-full rounded-2xl border border-zinc-200 bg-[#f7f7f8] px-5 py-4 text-[18px] text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-400 focus:bg-white focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
+      />
+
+      <input
+        required
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="Email address"
+        className="w-full rounded-2xl border border-zinc-200 bg-[#f7f7f8] px-5 py-4 text-[18px] text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-400 focus:bg-white focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
+      />
+
+      <div className="grid grid-cols-[92px_1fr] gap-2">
+        <div className="flex items-center justify-center rounded-2xl border border-zinc-200 bg-[#f7f7f8] text-[18px] text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+          +977
+        </div>
+        <input
+          required
+          inputMode="numeric"
+          pattern="\d{10}"
+          maxLength={10}
+          value={phoneDigits}
+          onChange={(e) => setPhoneDigits(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
+          placeholder="98XXXXXXXX"
+          className="w-full rounded-2xl border border-zinc-200 bg-[#f7f7f8] px-5 py-4 text-[18px] text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-400 focus:bg-white focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
+        />
+      </div>
+
+      <select
+        required
+        value={teamSize}
+        onChange={(e) => setTeamSize(e.target.value)}
+        className="w-full rounded-2xl border border-zinc-200 bg-[#f7f7f8] px-5 py-4 text-[18px] text-zinc-800 focus:border-zinc-400 focus:bg-white focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500"
+      >
+        <option value="">Team size</option>
+        <option value="1-5">1–5 reps</option>
+        <option value="6-15">6–15 reps</option>
+        <option value="16-50">16–50 reps</option>
+        <option value="50+">50+ reps</option>
+      </select>
+
+      <textarea
+        required
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        placeholder="Your message"
+        rows={5}
+        className="w-full rounded-2xl border border-zinc-200 bg-[#f7f7f8] px-5 py-4 text-[18px] text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-400 focus:bg-white focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
+      />
+
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full rounded-full bg-zinc-800 py-4 text-[18px] font-medium text-white shadow-[0_10px_28px_rgba(0,0,0,0.18)] transition-colors hover:bg-zinc-700 disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+      >
+        {loading ? "Sending..." : "Request demo"}
+      </button>
+    </form>
   );
 }
 
