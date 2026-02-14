@@ -311,6 +311,86 @@ export default function Home() {
           </div>
         </ScrollSection>
 
+        {/* Pricing section — one connected strip: left | phone (tilted connector) | right (taller); phone.png */}
+        <ScrollSection className="mx-auto max-w-5xl pt-20 pb-20 md:pt-24 md:pb-24">
+          <div className="relative flex min-h-[340px] flex-col overflow-visible rounded-2xl md:flex-row md:items-stretch">
+            {/* Left panel — light blue-grey; clean typography, step numbers in circles */}
+            <div
+              className="flex min-w-0 flex-1 flex-col justify-center rounded-t-2xl pt-8 pb-7 pl-7 pr-6 md:rounded-l-2xl md:rounded-tr-none md:self-center md:pt-10 md:pb-8"
+              style={{ backgroundColor: "#e8ecf1" }}
+            >
+              <h3
+                className="text-[1.05rem] font-bold leading-snug tracking-tight"
+                style={{ color: "#1d1e20" }}
+              >
+                Get started in minutes
+              </h3>
+              <div className="mt-6 space-y-3.5">
+                {[
+                  "Sign up",
+                  "Add your team & shops",
+                  "Start capturing orders",
+                ].map((step, i) => (
+                  <div
+                    key={step}
+                    className="flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3"
+                    style={{ backgroundColor: "rgba(255,255,255,0.85)" }}
+                  >
+                    <span
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold"
+                      style={{ backgroundColor: "#e2e4e8", color: "#1d1e20" }}
+                    >
+                      {i + 1}
+                    </span>
+                    <span className="text-[15px] font-medium leading-snug" style={{ color: "#1d1e20" }}>
+                      {step}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Phone — middle as connector; tilted, overlaps both on desktop; between panels on mobile */}
+            <div className="relative z-10 flex items-center justify-center py-4 md:absolute md:inset-0 md:pointer-events-none md:py-0">
+              <div className="relative w-[200px] drop-shadow-2xl md:absolute md:left-1/2 md:top-1/2 md:my-8 md:w-[260px] md:-translate-x-1/2 md:-translate-y-1/2 md:rotate-[6deg] md:pointer-events-auto">
+                <Image
+                  src="/phone.png"
+                  alt="SalesSuite app on phone"
+                  width={260}
+                  height={540}
+                  className="h-auto w-full"
+                />
+              </div>
+            </div>
+
+            {/* Right panel — dark, taller; text and button right-aligned */}
+            <div
+              className="flex min-w-0 flex-1 flex-col items-end justify-center rounded-b-2xl px-8 py-14 text-right md:min-h-[440px] md:rounded-r-2xl md:rounded-bl-none md:py-20 md:px-10"
+              style={{ backgroundColor: "#2d2f33" }}
+            >
+              <p
+                className="text-[1.125rem] font-normal leading-snug"
+                style={{ color: "#f5f6f8" }}
+              >
+                Pricing that scales with your team.
+              </p>
+              <p
+                className="mt-5 max-w-[260px] text-[0.9375rem] font-normal leading-relaxed"
+                style={{ color: "#b6b8b9" }}
+              >
+                Pricing depends on your team size. Get in touch and we&apos;ll tailor a plan for you.
+              </p>
+              <Link
+                href="#contact"
+                className="mt-8 inline-block rounded-full px-10 py-3.5 text-[15px] font-medium transition-opacity hover:opacity-90"
+                style={{ backgroundColor: "#ffffff", color: "#1d1e20" }}
+              >
+                Get in touch
+              </Link>
+            </div>
+          </div>
+        </ScrollSection>
+
         {/* Contact Form Section */}
         <ScrollSection id="contact" className="mx-auto mt-20 mb-20 max-w-2xl">
           <p className="text-center text-xs uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">Request a Demo</p>
