@@ -15,6 +15,7 @@ const navItems = [
   { label: "Staff", href: "/dashboard/staff", icon: UsersIcon },
   { label: "Shops", href: "/dashboard/shops", icon: StoreIcon },
   { label: "Assignments", href: "/dashboard/assignments", icon: LinkIcon },
+  { label: "Profile", href: "/dashboard/profile", icon: UserIcon },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -256,6 +257,15 @@ function LinkIcon({ active }: { active: boolean }) {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" className={active ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400 dark:text-zinc-500"}>
       <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
       <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  );
+}
+
+function UserIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" className={active ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400 dark:text-zinc-500"}>
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
     </svg>
   );
 }

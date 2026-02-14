@@ -7,6 +7,7 @@ export type MeResponse = {
     id: string;
     fullName: string;
     email: string;
+    phone?: string;
     role: "boss" | "manager" | "rep" | "back_office";
     companyUserId: string;
   };
@@ -14,8 +15,11 @@ export type MeResponse = {
     id: string;
     name: string;
     slug: string;
+    address?: string;
+    plan?: string;
     subscriptionEndsAt?: string | null;
     staffLimit?: number;
+    staffCount?: number;
   };
 };
 

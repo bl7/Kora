@@ -1,12 +1,13 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { MeResponse } from "./types";
 
 type SessionState = {
   user: NonNullable<MeResponse["user"]>;
   company: NonNullable<MeResponse["company"]>;
+  refreshSession: () => Promise<void>;
 };
 
 const SessionContext = createContext<SessionState | null>(null);
@@ -19,27 +20,28 @@ export function useSession() {
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const [session, setSession] = useState<SessionState | null>(null);
+  const [session, setSession] = useState<Omit<SessionState, "refreshSession"> | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    void (async () => {
-      const res = await fetch("/api/auth/me");
-      const data = (await res.json()) as MeResponse;
-      if (res.status === 403 && data.subscriptionExpired) {
-        router.push(
-          `/subscription-expired${data.companyName ? `?company=${encodeURIComponent(data.companyName)}` : ""}`
-        );
-        return;
-      }
-      if (!res.ok || !data.ok || !data.user || !data.company) {
-        router.push("/auth/login");
-        return;
-      }
-      setSession({ user: data.user, company: data.company });
-      setLoading(false);
-    })();
+  const refreshSession = useCallback(async () => {
+    const res = await fetch("/api/auth/me");
+    const data = (await res.json()) as MeResponse;
+    if (res.status === 403 && data.subscriptionExpired) {
+      router.push(
+        `/subscription-expired${data.companyName ? `?company=${encodeURIComponent(data.companyName)}` : ""}`
+      );
+      return;
+    }
+    if (!res.ok || !data.ok || !data.user || !data.company) {
+      router.push("/auth/login");
+      return;
+    }
+    setSession({ user: data.user, company: data.company });
   }, [router]);
+
+  useEffect(() => {
+    void refreshSession().then(() => setLoading(false));
+  }, [refreshSession]);
 
   if (loading) {
     return (
@@ -51,6 +53,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   if (!session) return null;
 
-  return <SessionContext.Provider value={session}>{children}</SessionContext.Provider>;
+  return (
+    <SessionContext.Provider value={{ ...session, refreshSession }}>
+      {children}
+    </SessionContext.Provider>
+  );
 }
 
