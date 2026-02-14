@@ -191,14 +191,15 @@ export default function StaffPage() {
     loadStaff();
   }
 
-  async function handleDeactivate(s: Staff, reassignToId?: string) {
+  async function handleDeactivate(s: Staff, reassignments?: Record<string, string>) {
     setMenuOpenId(null);
     setDeactivateStaff(null);
+    setDeactivatePreview(null);
     setWorking(true);
     const res = await fetch(`/api/manager/staff/${s.company_user_id}/deactivate`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(reassignToId ? { reassign_to_staff_id: reassignToId } : {}),
+      body: JSON.stringify(reassignments ? { reassignments } : {}),
     });
     const data = (await res.json()) as { ok: boolean; error?: string };
     setWorking(false);
@@ -225,14 +226,35 @@ export default function StaffPage() {
   }
 
   const [activeReps, setActiveReps] = useState<Staff[]>([]);
+  const [deactivatePreview, setDeactivatePreview] = useState<{
+    shops_only_this_rep: { shop_id: string; shop_name: string }[];
+    shops_other_reps_too: { shop_id: string; shop_name: string }[];
+  } | null>(null);
+
   useEffect(() => {
-    if (!deactivateStaff) return;
+    if (!deactivateStaff) {
+      setDeactivatePreview(null);
+      return;
+    }
     const params = new URLSearchParams({ status: "active", role: "rep" });
     fetch(`/api/manager/staff?${params}`)
       .then((r) => r.json())
       .then((d: StaffListResponse) => {
         if (d.ok && d.staff) setActiveReps(d.staff.filter((s) => s.company_user_id !== deactivateStaff?.company_user_id));
       });
+    fetch(`/api/manager/staff/${deactivateStaff.company_user_id}/deactivate-preview`)
+      .then((r) => r.json())
+      .then((d: { ok: boolean; shops_only_this_rep?: { shop_id: string; shop_name: string }[]; shops_other_reps_too?: { shop_id: string; shop_name: string }[] }) => {
+        if (d.ok) {
+          setDeactivatePreview({
+            shops_only_this_rep: d.shops_only_this_rep ?? [],
+            shops_other_reps_too: d.shops_other_reps_too ?? [],
+          });
+        } else {
+          setDeactivatePreview({ shops_only_this_rep: [], shops_other_reps_too: [] });
+        }
+      })
+      .catch(() => setDeactivatePreview({ shops_only_this_rep: [], shops_other_reps_too: [] }));
   }, [deactivateStaff]);
 
   return (
@@ -488,8 +510,9 @@ export default function StaffPage() {
         <DeactivateModal
           staff={deactivateStaff}
           activeReps={activeReps}
-          onClose={() => setDeactivateStaff(null)}
-          onConfirm={(reassignToId) => handleDeactivate(deactivateStaff, reassignToId)}
+          preview={deactivatePreview}
+          onClose={() => { setDeactivateStaff(null); setDeactivatePreview(null); }}
+          onConfirm={(reassignments) => handleDeactivate(deactivateStaff, reassignments)}
           working={working}
         />
       )}
@@ -659,12 +682,21 @@ function EditStaffModal(props: {
 function DeactivateModal(props: {
   staff: Staff;
   activeReps: Staff[];
+  preview: {
+    shops_only_this_rep: { shop_id: string; shop_name: string }[];
+    shops_other_reps_too: { shop_id: string; shop_name: string }[];
+  } | null;
   onClose: () => void;
-  onConfirm: (reassignToId?: string) => void;
+  onConfirm: (reassignments?: Record<string, string>) => void;
   working: boolean;
 }) {
-  const [reassignToId, setReassignToId] = useState("");
-  const count = props.staff.assigned_shops_count ?? 0;
+  const solo = props.preview?.shops_only_this_rep ?? [];
+  const other = props.preview?.shops_other_reps_too ?? [];
+  const [reassignments, setReassignments] = useState<Record<string, string>>({});
+  const loading = (props.staff.assigned_shops_count ?? 0) > 0 && props.preview === null;
+  const needReassign = solo.length > 0;
+  const allSoloChosen = solo.every((s) => reassignments[s.shop_id]);
+  const canSubmit = !needReassign || (props.activeReps.length > 0 && allSoloChosen);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="deactivate-title">
@@ -673,33 +705,51 @@ function DeactivateModal(props: {
         <h2 id="deactivate-title" className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
           Deactivate rep
         </h2>
-        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-          This rep has {count} assigned shop{count !== 1 ? "s" : ""}. Reassign before deactivating.
-        </p>
-        <div className="mt-4">
-          <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
-            Reassign to
-          </label>
-          {props.activeReps.length === 0 ? (
-            <p className="text-sm text-amber-600 dark:text-amber-400">
-              No other active reps. Activate another rep first, then try again.
-            </p>
-          ) : (
-            <select
-              value={reassignToId}
-              onChange={(e) => setReassignToId(e.target.value)}
-              className={inputClass}
-              required
-            >
-              <option value="">Select a rep</option>
-              {props.activeReps.map((r) => (
-                <option key={r.company_user_id} value={r.company_user_id}>
-                  {r.full_name} ({r.email})
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
+        {loading ? (
+          <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Loading…</p>
+        ) : (
+          <>
+            {other.length > 0 && (
+              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                This rep is also assigned to {other.length} shop{other.length !== 1 ? "s" : ""} that have other reps. We&apos;ll remove this rep from those; no reassignment needed.
+              </p>
+            )}
+            {needReassign && (
+              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                The following shop{solo.length !== 1 ? "s" : ""} {solo.length !== 1 ? "have" : "has"} only this rep. Choose a rep for each:
+              </p>
+            )}
+            {needReassign && (
+              <div className="mt-3 space-y-3">
+                {props.activeReps.length === 0 ? (
+                  <p className="text-sm text-amber-600 dark:text-amber-400">
+                    No other active reps. Activate another rep first, then try again.
+                  </p>
+                ) : (
+                  solo.map((shop) => (
+                    <div key={shop.shop_id}>
+                      <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                        {shop.shop_name}
+                      </label>
+                      <select
+                        value={reassignments[shop.shop_id] ?? ""}
+                        onChange={(e) => setReassignments((prev) => ({ ...prev, [shop.shop_id]: e.target.value }))}
+                        className={inputClass}
+                      >
+                        <option value="">Select rep</option>
+                        {props.activeReps.map((r) => (
+                          <option key={r.company_user_id} value={r.company_user_id}>
+                            {r.full_name} ({r.email})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </>
+        )}
         <div className="mt-6 flex justify-end gap-2">
           <button
             type="button"
@@ -710,11 +760,11 @@ function DeactivateModal(props: {
           </button>
           <button
             type="button"
-            onClick={() => props.onConfirm(reassignToId || undefined)}
-            disabled={props.working || (props.activeReps.length === 0 || !reassignToId)}
+            onClick={() => props.onConfirm(needReassign && allSoloChosen ? reassignments : undefined)}
+            disabled={props.working || !canSubmit}
             className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
-            {props.working ? "Updating…" : "Reassign and deactivate"}
+            {props.working ? "Updating…" : needReassign ? "Reassign and deactivate" : "Deactivate"}
           </button>
         </div>
       </div>

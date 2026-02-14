@@ -73,7 +73,7 @@ export default function AssignmentsPage() {
             .map((a) => {
               const shop = shops.find((s) => s.id === a.shop_id);
               if (!shop) return null;
-              return { shop, isPrimary: a.is_primary };
+              return { shop, isPrimary: a.is_primary, assignmentId: a.id };
             })
             .filter(
               (
@@ -81,6 +81,7 @@ export default function AssignmentsPage() {
               ): value is {
                 shop: Shop;
                 isPrimary: boolean;
+                assignmentId: string;
               } => value !== null
             );
 
@@ -105,6 +106,21 @@ export default function AssignmentsPage() {
     }
     toast.success("Shop assigned to rep.");
     setAddModalOpen(false);
+    await loadData();
+  }
+
+  async function onUnassign(assignmentId: string) {
+    setWorking(true);
+    const res = await fetch(`/api/manager/shop-assignments/${assignmentId}`, {
+      method: "DELETE",
+    });
+    const data = (await res.json()) as { ok: boolean; error?: string };
+    setWorking(false);
+    if (!res.ok || !data.ok) {
+      toast.error(data.error ?? "Could not unassign");
+      return;
+    }
+    toast.success("Shop unassigned.");
     await loadData();
   }
 
@@ -179,10 +195,10 @@ export default function AssignmentsPage() {
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                {entry.shops.map(({ shop, isPrimary }) => (
+                {entry.shops.map(({ shop, isPrimary, assignmentId }) => (
                   <span
-                    key={shop.id}
-                    className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                    key={assignmentId}
+                    className="inline-flex items-center gap-1 rounded-full bg-zinc-100 pl-3 pr-1 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
                   >
                     {shop.name}
                     {isPrimary && (
@@ -190,6 +206,19 @@ export default function AssignmentsPage() {
                         Primary
                       </span>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => onUnassign(assignmentId)}
+                      disabled={working}
+                      className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-zinc-200 hover:text-zinc-900 disabled:opacity-50 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
+                      title="Unassign"
+                      aria-label={`Unassign ${shop.name}`}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
                   </span>
                 ))}
               </div>

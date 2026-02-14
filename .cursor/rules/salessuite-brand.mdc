@@ -9,12 +9,12 @@ Use these rules as the **single source of truth** for product naming, logo usage
 
 - **Primary product name (use almost everywhere)**: `SalesSuite`
 - **Optional short label** (only when space is very tight, e.g. tiny badges): `SS`
-- **Legal company name** (footer & legal contexts only): `Gopala Sales Management Pvt Ltd`
+- **Legal company name** (footer & legal contexts only): `SalesSuite Private Limited`
 
 ## Capitalization and Spelling
 
 - **Correct**: `SalesSuite`
-  - Example sentence: “SalesSuite verifies visits and captures orders.”
+  - Example sentence: "SalesSuite verifies visits and captures orders."
 - **Incorrect — do NOT use**:
   - `Salessuite`
   - `Sales suite`
@@ -30,10 +30,9 @@ Use these rules as the **single source of truth** for product naming, logo usage
   - Terms of Service
   - Privacy Policy
   - Invoices, contracts, and similar documents
-  - Use **`Gopala Sales Management Pvt Ltd`** here as the legal entity name, optionally alongside `SalesSuite` (e.g. “SalesSuite is a product of Gopala Sales Management Pvt Ltd”).
+  - Use **`SalesSuite Private Limited`** here as the legal entity name, optionally alongside `SalesSuite` (e.g. "SalesSuite is a product of SalesSuite Private Limited").
 
 ## Restrictions
 
-- Do **not** mention “Gopala” or `Gopala Sales Management Pvt Ltd` in regular UI, marketing, or product copy (only in clearly legal contexts above).
+- In regular UI, marketing, or product copy use **SalesSuite**; reserve **SalesSuite Private Limited** for legal contexts (footer, terms, invoices) as above.
 - When in doubt, default to **`SalesSuite`** with this exact casing.
-

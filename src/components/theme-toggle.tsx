@@ -1,18 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "kora-theme";
 
 type ThemeMode = "light" | "dark";
 
 export function ThemeToggle() {
-  const [mode, setMode] = useState<ThemeMode>(() => {
-    if (typeof document !== "undefined") {
-      return document.documentElement.classList.contains("dark") ? "dark" : "light";
-    }
-    return "light";
-  });
+  const [mode, setMode] = useState<ThemeMode>("light");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const isDark = document.documentElement.classList.contains("dark");
+    setMode(isDark ? "dark" : "light");
+    setMounted(true);
+  }, []);
 
   function toggleTheme() {
     const root = document.documentElement;
@@ -20,6 +22,15 @@ export function ThemeToggle() {
     root.classList.toggle("dark", nextMode === "dark");
     localStorage.setItem(STORAGE_KEY, nextMode);
     setMode(nextMode);
+  }
+
+  if (!mounted) {
+    return (
+      <div
+        className="fixed bottom-5 right-5 z-[100] h-11 w-11 rounded-full border border-zinc-300 bg-white dark:border-zinc-700 dark:bg-zinc-900"
+        aria-hidden
+      />
+    );
   }
 
   return (

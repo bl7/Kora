@@ -116,7 +116,7 @@ export default function Home() {
     url: "https://kora.vercel.app",
     publisher: {
       "@type": "Organization",
-      name: "Gopala Sales Management Pvt Ltd",
+      name: "SalesSuite Private Limited",
     },
   };
 
@@ -343,7 +343,7 @@ export default function Home() {
             <FooterLinks title="Connect" links={["Contact", "Support", "WhatsApp"]} />
           </div>
           <p className="mt-6 text-xs text-center text-zinc-500">
-            SalesSuite is a product of Gopala Sales Management Pvt Ltd.
+            SalesSuite is a product of SalesSuite Private Limited.
           </p>
         </div>
 

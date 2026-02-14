@@ -22,8 +22,8 @@ export const metadata: Metadata = {
   description: "SalesSuite helps distributors and sales teams verify field visits, capture leads, and process orders. Geofencing-based visit tracking, lead management, and order submission for field sales operations.",
   keywords: ["field sales", "sales management", "visit tracking", "geofencing", "sales reps", "distributors", "order management", "lead capture", "field operations"],
   authors: [{ name: "SalesSuite" }],
-  creator: "Gopala Sales Management Pvt Ltd",
-  publisher: "Gopala Sales Management Pvt Ltd",
+  creator: "SalesSuite Private Limited",
+  publisher: "SalesSuite Private Limited",
   robots: {
     index: true,
     follow: true,

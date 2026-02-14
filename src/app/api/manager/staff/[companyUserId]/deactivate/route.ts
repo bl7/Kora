@@ -5,7 +5,7 @@ import { getDb } from "@/lib/db";
 import { ensureRole, getRequestSession, jsonError, jsonOk } from "@/lib/http";
 
 const bodySchema = z.object({
-  reassign_to_staff_id: z.uuid().optional(),
+  reassignments: z.record(z.string().uuid(), z.string().uuid()).optional(),
 });
 
 export async function POST(
@@ -24,7 +24,7 @@ export async function POST(
     return jsonError(400, parseResult.error.issues[0]?.message ?? "Invalid body");
   }
 
-  const reassignToId = parseResult.data.reassign_to_staff_id;
+  const reassignments = parseResult.data.reassignments ?? {};
   const db = getDb();
   const client = await db.connect();
 
@@ -40,33 +40,68 @@ export async function POST(
       return jsonError(404, "Staff member not found");
     }
 
-    const assignmentCount = await client.query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM shop_assignments WHERE company_id = $1 AND rep_company_user_id = $2`,
+    const rows = await client.query<{
+      shop_id: string;
+      rep_count: string;
+    }>(
+      `
+      WITH this_rep_shops AS (
+        SELECT shop_id FROM shop_assignments
+        WHERE company_id = $1 AND rep_company_user_id = $2
+      ),
+      rep_counts AS (
+        SELECT shop_id, COUNT(*)::text AS rep_count
+        FROM shop_assignments WHERE company_id = $1
+        GROUP BY shop_id
+      )
+      SELECT t.shop_id, r.rep_count
+      FROM this_rep_shops t
+      JOIN rep_counts r ON r.shop_id = t.shop_id
+      `,
       [authResult.session.companyId, companyUserId]
     );
-    const count = parseInt(assignmentCount.rows[0]?.count ?? "0", 10);
 
-    if (count > 0) {
-      if (!reassignToId) {
+    const soloShopIds: string[] = [];
+    const otherRepShopIds: string[] = [];
+    for (const row of rows.rows) {
+      const count = parseInt(row.rep_count, 10);
+      if (count <= 1) soloShopIds.push(row.shop_id);
+      else otherRepShopIds.push(row.shop_id);
+    }
+
+    for (const shopId of soloShopIds) {
+      const newRepId = reassignments[shopId];
+      if (!newRepId) {
         await client.query("ROLLBACK");
         return jsonError(
           400,
-          "This rep has assigned shops. Provide reassign_to_staff_id to reassign them before deactivating."
+          `Shop ${shopId} has no other reps. Provide reassignments[${shopId}] with an active rep to reassign before deactivating.`
         );
       }
       const otherRep = await client.query(
         `SELECT id FROM company_users WHERE id = $1 AND company_id = $2 AND role = 'rep' AND status = 'active' LIMIT 1`,
-        [reassignToId, authResult.session.companyId]
+        [newRepId, authResult.session.companyId]
       );
       if (!otherRep.rowCount) {
         await client.query("ROLLBACK");
-        return jsonError(400, "reassign_to_staff_id must be an active rep in this company");
+        return jsonError(400, `reassignments[${shopId}] must be an active rep in this company`);
       }
       await client.query(
-        `UPDATE shop_assignments SET rep_company_user_id = $1 WHERE company_id = $2 AND rep_company_user_id = $3`,
-        [reassignToId, authResult.session.companyId, companyUserId]
+        `DELETE FROM shop_assignments WHERE company_id = $1 AND shop_id = $2 AND rep_company_user_id = $3`,
+        [authResult.session.companyId, shopId, companyUserId]
+      );
+      await client.query(
+        `INSERT INTO shop_assignments (company_id, shop_id, rep_company_user_id, is_primary)
+         VALUES ($1, $2, $3, FALSE)
+         ON CONFLICT (company_id, shop_id, rep_company_user_id) DO NOTHING`,
+        [authResult.session.companyId, shopId, newRepId]
       );
     }
+
+    await client.query(
+      `DELETE FROM shop_assignments WHERE company_id = $1 AND rep_company_user_id = $2`,
+      [authResult.session.companyId, companyUserId]
+    );
 
     await client.query(
       `UPDATE company_users SET status = 'inactive' WHERE id = $1 AND company_id = $2`,
