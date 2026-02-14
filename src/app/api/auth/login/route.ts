@@ -83,6 +83,7 @@ export async function POST(request: Request) {
   });
 
   const response = jsonOk({
+    token,
     session: {
       userId: row.user_id,
       fullName: row.full_name,

@@ -16,7 +16,12 @@ export function jsonOk<T>(data: T, status = 200) {
 }
 
 export async function getRequestSession(request: NextRequest) {
-  const token = request.cookies.get(getSessionCookieName())?.value;
+  // Accept token from Authorization header (mobile) or cookie (web)
+  const authHeader = request.headers.get("Authorization");
+  const bearerToken =
+    authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  const cookieToken = request.cookies.get(getSessionCookieName())?.value;
+  const token = bearerToken ?? cookieToken ?? null;
 
   if (!token) {
     return null;
