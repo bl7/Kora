@@ -4,9 +4,61 @@ import { z } from "zod";
 import { getDb } from "@/lib/db";
 import { ensureRole, getRequestSession, jsonError, jsonOk } from "@/lib/http";
 
+/* ── GET — single shop ── */
+
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ shopId: string }> }
+) {
+  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager", "rep", "back_office"]);
+  if (!authResult.ok) return authResult.response;
+
+  const { shopId } = await context.params;
+  const companyId = authResult.session.companyId;
+  const isRep = authResult.session.role === "rep";
+
+  const result = await getDb().query(
+    `
+    SELECT
+      s.id,
+      s.external_shop_code,
+      s.name,
+      s.contact_name,
+      s.phone,
+      s.address,
+      s.notes,
+      s.latitude,
+      s.longitude,
+      s.geofence_radius_m,
+      s.location_source,
+      s.location_verified,
+      s.location_accuracy_m,
+      s.arrival_prompt_enabled,
+      s.min_dwell_seconds,
+      s.cooldown_minutes,
+      s.timezone,
+      s.is_active,
+      s.created_at,
+      s.updated_at,
+      COUNT(sa.id)::int AS assignment_count
+    FROM shops s
+    LEFT JOIN shop_assignments sa ON sa.shop_id = s.id AND sa.company_id = s.company_id
+    WHERE s.id = $1 AND s.company_id = $2
+      ${isRep ? "AND EXISTS (SELECT 1 FROM shop_assignments sa2 WHERE sa2.company_id = s.company_id AND sa2.shop_id = s.id AND sa2.rep_company_user_id = $3)" : ""}
+    GROUP BY s.id
+    LIMIT 1
+    `,
+    isRep ? [shopId, companyId, authResult.session.companyUserId] : [shopId, companyId]
+  );
+
+  if (!result.rowCount) return jsonError(404, "Shop not found");
+  return jsonOk({ shop: result.rows[0] });
+}
+
 const updateShopSchema = z.object({
   externalShopCode: z.string().max(80).nullable().optional(),
   name: z.string().min(2).max(150).optional(),
+  notes: z.string().max(5000).nullable().optional(),
   contactName: z.string().max(120).nullable().optional(),
   phone: z.string().max(30).nullable().optional(),
   address: z.string().max(500).nullable().optional(),
@@ -45,6 +97,7 @@ export async function PATCH(
 
   setIfDefined(updates, values, "external_shop_code", input.externalShopCode, position++);
   setIfDefined(updates, values, "name", input.name, position++);
+  setIfDefined(updates, values, "notes", input.notes, position++);
   setIfDefined(updates, values, "contact_name", input.contactName, position++);
   setIfDefined(updates, values, "phone", input.phone, position++);
   setIfDefined(updates, values, "address", input.address, position++);

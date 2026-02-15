@@ -23,13 +23,14 @@ const createShopSchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager", "back_office"]);
+  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager", "rep", "back_office"]);
   if (!authResult.ok) {
     return authResult.response;
   }
 
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim() ?? "";
+  const isRep = authResult.session.role === "rep";
 
   const result = await getDb().query(
     `
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest) {
       s.contact_name,
       s.phone,
       s.address,
+      s.notes,
       s.latitude,
       s.longitude,
       s.geofence_radius_m,
@@ -59,11 +61,12 @@ export async function GET(request: NextRequest) {
       ON sa.shop_id = s.id
       AND sa.company_id = s.company_id
     WHERE s.company_id = $1
+      ${isRep ? "AND EXISTS (SELECT 1 FROM shop_assignments sa2 WHERE sa2.company_id = s.company_id AND sa2.shop_id = s.id AND sa2.rep_company_user_id = $3)" : ""}
       AND ($2::text = '' OR s.name ILIKE '%' || $2 || '%' OR COALESCE(s.external_shop_code, '') ILIKE '%' || $2 || '%')
     GROUP BY s.id
     ORDER BY s.created_at DESC
     `,
-    [authResult.session.companyId, q]
+    isRep ? [authResult.session.companyId, q, authResult.session.companyUserId] : [authResult.session.companyId, q]
   );
 
   return jsonOk({ shops: result.rows });

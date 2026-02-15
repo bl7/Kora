@@ -16,13 +16,60 @@ const updateLeadSchema = z.object({
   notes: z.string().max(2000).nullable().optional(),
 });
 
+/* ── GET — single lead ── */
+
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ leadId: string }> }
+) {
+  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager", "rep", "back_office"]);
+  if (!authResult.ok) return authResult.response;
+
+  const { leadId } = await context.params;
+  const companyId = authResult.session.companyId;
+  const isRep = authResult.session.role === "rep";
+
+  const result = await getDb().query(
+    `
+    SELECT
+      l.id,
+      l.shop_id,
+      l.name,
+      l.contact_name,
+      l.phone,
+      l.email,
+      l.address,
+      l.status,
+      l.notes,
+      l.converted_at,
+      l.created_at,
+      l.updated_at,
+      l.assigned_rep_company_user_id,
+      l.created_by_company_user_id,
+      s.name AS shop_name,
+      u.full_name AS assigned_rep_name
+    FROM leads l
+    LEFT JOIN shops s ON s.id = l.shop_id AND s.company_id = l.company_id
+    LEFT JOIN company_users cu ON cu.id = l.assigned_rep_company_user_id AND cu.company_id = l.company_id
+    LEFT JOIN users u ON u.id = cu.user_id
+    WHERE l.id = $1 AND l.company_id = $2
+      ${isRep ? "AND (l.created_by_company_user_id = $3 OR l.assigned_rep_company_user_id = $3)" : ""}
+    LIMIT 1
+    `,
+    isRep ? [leadId, companyId, authResult.session.companyUserId] : [leadId, companyId]
+  );
+
+  if (!result.rowCount) return jsonError(404, "Lead not found");
+  return jsonOk({ lead: result.rows[0] });
+}
+
 /* ── PATCH — update lead ── */
 
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ leadId: string }> }
 ) {
-  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager"]);
+  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager", "rep"]);
   if (!authResult.ok) return authResult.response;
 
   const parseResult = updateLeadSchema.safeParse(await request.json());
@@ -33,6 +80,21 @@ export async function PATCH(
   const input = parseResult.data;
   const { leadId } = await context.params;
   const companyId = authResult.session.companyId;
+  const isRep = authResult.session.role === "rep";
+
+  if (isRep) {
+    const existing = await getDb().query<{ created_by_company_user_id: string | null; assigned_rep_company_user_id: string | null }>(
+      `SELECT created_by_company_user_id, assigned_rep_company_user_id FROM leads WHERE id = $1 AND company_id = $2 LIMIT 1`,
+      [leadId, companyId]
+    );
+    if (!existing.rowCount) return jsonError(404, "Lead not found");
+    const row = existing.rows[0]!;
+    const canEdit =
+      row.created_by_company_user_id === authResult.session.companyUserId ||
+      row.assigned_rep_company_user_id === authResult.session.companyUserId;
+    if (!canEdit) return jsonError(403, "You can only update leads you created or that are assigned to you");
+    if (input.assignedRepCompanyUserId !== undefined) return jsonError(403, "Reps cannot reassign leads");
+  }
 
   const updates: string[] = [];
   const values: Array<string | null> = [];

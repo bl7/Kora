@@ -193,18 +193,26 @@ All routes are under `https://kora-sand.vercel.app`. Send `Authorization: Bearer
 ### Leads
 - `GET /api/manager/leads` – list leads  
   - Query: `status` (new|contacted|qualified|converted|lost), `q` (search)
-  - Reps: only leads they created (`created_by_company_user_id`)
+  - Reps: only leads they created
+- `GET /api/manager/leads/[leadId]` – single lead  
+  - Reps: only leads they created or are assigned to
 - `POST /api/manager/leads` – create lead  
   - Body: `{ name, shopId?, contactName?, phone?, email?, address?, assignedRepCompanyUserId?, notes? }`
 - `PATCH /api/manager/leads/[leadId]` – update lead (incl. status)  
   - Body: `{ shopId?, name?, contactName?, phone?, email?, address?, status?, assignedRepCompanyUserId?, notes? }`  
-  - **Note:** Current API allows boss/manager only. Reps need backend change to update their own leads.
+  - Reps: only leads they created or are assigned to; cannot reassign
+- `POST /api/manager/leads/[leadId]/convert-to-shop` – convert lead to shop (creates shop, sets lead status)  
+  - Boss/manager/rep (reps only for leads assigned to them or they created)
 - `DELETE /api/manager/leads/[leadId]` – delete lead (boss/manager only; app may not expose)
 
 ### Shops
 - `GET /api/manager/shops` – list shops  
   - Query: `q` (search)  
-  - **Note:** Current API allows boss/manager/back_office only, not rep. Reps need their assigned shops. Backend must either add rep support with filter by `shop_assignments`, or provide a rep-specific shops endpoint.
+  - Reps: only shops assigned to them. Boss/manager/back_office: all shops.
+- `GET /api/manager/shops/[shopId]` – single shop  
+  - Reps: only assigned shops
+- `PATCH /api/manager/shops/[shopId]` – update shop (boss/manager only)  
+  - Body: `{ name?, notes?, contactName?, phone?, address?, ... }`
 
 ### Orders
 - `GET /api/manager/orders` – list orders  
@@ -216,14 +224,162 @@ All routes are under `https://kora-sand.vercel.app`. Send `Authorization: Bearer
   - **Reps:** Only allow creating orders for shops in their shops list (assigned shops). The app should restrict the shop picker to those shops.
 - `GET /api/manager/orders/[orderId]` – single order details  
   - Reps: only if they placed it
-- `PATCH /api/manager/orders/[orderId]` – update order (status forward only: received→processing→shipped→closed)  
-  - Body: `{ status?, notes? }`  
-  - **Note:** Boss/manager/back_office only; reps typically only create and view.
+- `PATCH /api/manager/orders/[orderId]` – update order  
+  - Body: `{ status?, notes?, shopId?, leadId?, items? }`  
+  - **Status:** Forward only (received→processing→shipped→closed). Boss/manager/back_office only.
+  - **Items, shopId, leadId:** Only when status is `"received"`. Replaces items entirely – send full array.
+  - **Reps:** Can edit `items`, `shopId`, `leadId`, `notes` on orders they placed (when status is received). Cannot change status.
 - `POST /api/manager/orders/[orderId]/cancel` – cancel order (boss/manager/back_office; app may not expose)
 
 ### Products
 - `GET /api/manager/products` – list products (view only)  
   - Query: `q`, `status` (active|inactive)
+
+### Visits (rep-specific per shop)
+- `GET /api/manager/visits` – list visits  
+  - Query: `shop` (shop_id), `rep` (company_user_id), `date_from`, `date_to`  
+  - Reps: only their own visits
+- `POST /api/manager/visits` – start visit  
+  - Body: `{ shopId }`  
+  - Reps: only for shops assigned to them
+- `PATCH /api/manager/visits/[visitId]` – end visit  
+  - Body: `{ end: true }`  
+  - Reps: only their own visits
+
+### Tasks (assigned to reps)
+- `GET /api/manager/tasks` – list tasks  
+  - Query: `status` (pending|completed|cancelled), `rep` (company_user_id)  
+  - Reps: only tasks assigned to them
+- `GET /api/manager/tasks/[taskId]` – single task
+- `POST /api/manager/tasks` – create/assign task (boss/manager only)  
+  - Body: `{ repCompanyUserId, title, description?, dueAt?, leadId?, shopId? }`
+- `PATCH /api/manager/tasks/[taskId]` – update task (complete, reschedule)  
+  - Body: `{ status?, dueAt?, title?, description? }`  
+  - Reps: only tasks assigned to them
+
+---
+
+## 6.1 Order Update (Edit Order Contents) – Mobile Guide
+
+Use **PATCH** `/api/manager/orders/[orderId]` to edit an order **only when status is `"received"`**.
+
+### When to show "Edit order"
+
+- Show an **Edit** action on an order detail screen when `order.status === "received"`.
+- Hide or disable Edit when status is `processing`, `shipped`, `closed`, or `cancelled`.
+
+### Request body (camelCase)
+
+| Field   | Type   | Required | Notes                                                                 |
+|---------|--------|----------|-----------------------------------------------------------------------|
+| `items` | array  | No*      | Full replacement – send the complete list of items you want to keep   |
+| `shopId`| uuid   | No       | Shop UUID or `null`                                                   |
+| `leadId`| uuid   | No       | Lead UUID or `null`                                                   |
+| `notes` | string | No       | Order notes (max 2000 chars)                                          |
+| `status`| enum   | No       | `"processing"` \| `"shipped"` \| `"closed"` – **reps cannot send this** |
+
+\* At least one of `items`, `shopId`, `leadId`, `notes`, or `status` must be sent.
+
+### Item shape (same as create order)
+
+```json
+{
+  "productId": "uuid",
+  "productName": "string",
+  "productSku": "string",
+  "quantity": 1,
+  "unitPrice": 100,
+  "notes": "string"
+}
+```
+
+- `productName`, `quantity`, `unitPrice` required per item
+- `productId`, `productSku`, `notes` optional
+- `items` must have at least 1 item
+
+### Editing items
+
+- You **replace** all items with the `items` array you send.
+- To add: include all existing items + the new one.
+- To change quantity: include all items with updated `quantity`.
+- To remove: include all items except the one to remove.
+- `total_amount` is recalculated by the backend.
+
+### Example: Change quantity of one item
+
+Current order has 2 items. You want to change quantity of the first from 2 to 3:
+
+```json
+{
+  "items": [
+    { "productName": "Product A", "quantity": 3, "unitPrice": 100 },
+    { "productName": "Product B", "quantity": 1, "unitPrice": 250 }
+  ]
+}
+```
+
+### Example: Add a new item
+
+```json
+{
+  "items": [
+    { "productName": "Product A", "quantity": 2, "unitPrice": 100 },
+    { "productName": "Product B", "quantity": 1, "unitPrice": 250 },
+    { "productName": "Product C", "quantity": 1, "unitPrice": 75 }
+  ]
+}
+```
+
+### Example: Remove an item
+
+```json
+{
+  "items": [
+    { "productName": "Product B", "quantity": 1, "unitPrice": 250 }
+  ]
+}
+```
+
+### Example: Change shop only
+
+```json
+{
+  "shopId": "new-shop-uuid"
+}
+```
+
+### Example: Edit notes only
+
+```json
+{
+  "notes": "Updated delivery instructions"
+}
+```
+
+### Response (200)
+
+```json
+{
+  "ok": true,
+  "order": { /* full order object with updated items, shop_id, lead_name, etc. */ }
+}
+```
+
+### Error responses
+
+- **400** – `"Order contents can only be edited when status is received"` – items/shop/lead edit attempted on a non-received order
+- **400** – `"At least one item is required"` – `items` array is empty
+- **403** – `"You can only edit orders you placed"` – rep tried to edit another rep's order
+- **403** – `"Reps cannot change order status"` – rep sent `status` in the body
+
+### Role summary
+
+| Role          | Can edit items/shop/lead/notes | Can change status |
+|---------------|--------------------------------|-------------------|
+| Rep           | Yes, on orders they placed     | No                |
+| Manager       | Yes                            | Yes               |
+| Boss          | Yes                            | Yes               |
+| Back office   | Yes                            | Yes               |
 
 ---
 
@@ -294,10 +450,12 @@ For 403 with `subscriptionExpired: true`: show Subscription Expired screen (see 
 
 The existing backend may need these changes for full mobile support:
 
-1. ~~**Bearer token auth**~~ – Done: `getRequestSession` accepts `Authorization: Bearer <token>`.
-2. ~~**Login response**~~ – Done: Login returns `token` in the JSON body.
-3. **Shops for reps:** Allow rep role on `GET /api/manager/shops` and filter results by `shop_assignments` where `rep_company_user_id = current user`.
-4. **Lead update for reps:** Allow rep role on `PATCH /api/manager/leads/[leadId]` and restrict updates to leads where `created_by_company_user_id = current user` OR `assigned_rep_company_user_id = current user`.
+1. ~~**Bearer token auth**~~ – Done
+2. ~~**Login response**~~ – Done
+3. ~~**Shops for reps**~~ – Done: reps get assigned shops only
+4. ~~**Lead convert**~~ – Done: `POST /api/manager/leads/[leadId]/convert-to-shop`
+5. ~~**Visits**~~ – Done: GET, POST, PATCH
+6. ~~**Tasks**~~ – Done: GET, POST, PATCH
 
 ---
 

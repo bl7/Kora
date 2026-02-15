@@ -10,9 +10,24 @@ const ALLOWED_FORWARD: Record<string, string> = {
   shipped: "closed",
 };
 
+const orderItemSchema = z.object({
+  productId: z.string().uuid().optional(),
+  productName: z.string().min(1).max(200),
+  productSku: z.string().max(80).optional(),
+  quantity: z.number().positive(),
+  unitPrice: z.number().nonnegative(),
+  notes: z.string().max(500).optional(),
+});
+
 const updateOrderSchema = z.object({
   status: z.enum(["processing", "shipped", "closed"]).optional(),
   notes: z.string().max(2000).nullable().optional(),
+  shopId: z.string().uuid().nullable().optional(),
+  leadId: z.string().uuid().nullable().optional(),
+  items: z
+    .array(orderItemSchema)
+    .min(1, "At least one item is required")
+    .optional(),
 });
 
 async function getOrderById(orderId: string, companyId: string, isRep: boolean, companyUserId?: string) {
@@ -78,13 +93,13 @@ export async function GET(
   return jsonOk({ order });
 }
 
-/* ── PATCH — forward status only (no skip, no backwards); notes optional ── */
+/* ── PATCH — status forward, notes, items (when received), shop/lead ── */
 
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ orderId: string }> }
 ) {
-  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager", "back_office"]);
+  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager", "rep", "back_office"]);
   if (!authResult.ok) return authResult.response;
 
   const parseResult = updateOrderSchema.safeParse(await request.json());
@@ -95,13 +110,28 @@ export async function PATCH(
   const input = parseResult.data;
   const { orderId } = await context.params;
   const companyId = authResult.session.companyId;
+  const companyUserId = authResult.session.companyUserId;
+  const isRep = authResult.session.role === "rep";
 
-  const current = await getDb().query<{ status: string }>(
-    "SELECT status FROM orders WHERE id = $1 AND company_id = $2",
+  const current = await getDb().query<{ status: string; placed_by_company_user_id: string | null }>(
+    "SELECT status, placed_by_company_user_id FROM orders WHERE id = $1 AND company_id = $2",
     [orderId, companyId]
   );
   if (!current.rowCount) return jsonError(404, "Order not found");
   const currentStatus = current.rows[0].status;
+  const placedBy = current.rows[0].placed_by_company_user_id;
+
+  // Reps can only update items, shopId, leadId, notes on orders they placed, and only when status is "received"
+  const canEditContents = currentStatus === "received" && (input.items !== undefined || input.shopId !== undefined || input.leadId !== undefined);
+  if (canEditContents && isRep) {
+    if (placedBy !== companyUserId) return jsonError(403, "You can only edit orders you placed");
+    if (input.status !== undefined) return jsonError(403, "Reps cannot change order status");
+  }
+
+  // Only received orders can have items/shop/lead edited
+  if ((input.items !== undefined || input.shopId !== undefined || input.leadId !== undefined) && currentStatus !== "received") {
+    return jsonError(400, "Order contents can only be edited when status is received");
+  }
 
   if (input.status !== undefined) {
     const allowedNext = ALLOWED_FORWARD[currentStatus];
@@ -110,38 +140,103 @@ export async function PATCH(
     }
   }
 
-  const updates: string[] = [];
-  const values: Array<string | null> = [];
-  let pos = 1;
+  const hasUpdates =
+    input.status !== undefined ||
+    input.notes !== undefined ||
+    input.shopId !== undefined ||
+    input.leadId !== undefined ||
+    input.items !== undefined;
+  if (!hasUpdates) return jsonError(400, "No fields provided to update");
 
-  if (input.status !== undefined) {
-    updates.push(`status = $${pos}`);
-    values.push(input.status);
-    pos++;
-    if (input.status === "processing") {
-      updates.push("processed_at = COALESCE(processed_at, NOW())");
-    } else if (input.status === "shipped") {
-      updates.push("shipped_at = COALESCE(shipped_at, NOW())");
-    } else if (input.status === "closed") {
-      updates.push("closed_at = COALESCE(closed_at, NOW())");
+  const db = getDb();
+  const client = await db.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const updates: string[] = [];
+    const values: Array<string | null> = [];
+    let pos = 1;
+
+    if (input.status !== undefined) {
+      updates.push(`status = $${pos}`);
+      values.push(input.status);
+      pos++;
+      if (input.status === "processing") {
+        updates.push("processed_at = COALESCE(processed_at, NOW())");
+      } else if (input.status === "shipped") {
+        updates.push("shipped_at = COALESCE(shipped_at, NOW())");
+      } else if (input.status === "closed") {
+        updates.push("closed_at = COALESCE(closed_at, NOW())");
+      }
     }
+    if (input.notes !== undefined) {
+      updates.push(`notes = $${pos}`);
+      values.push(input.notes);
+      pos++;
+    }
+    if (input.shopId !== undefined) {
+      updates.push(`shop_id = $${pos}`);
+      values.push(input.shopId);
+      pos++;
+    }
+    if (input.leadId !== undefined) {
+      updates.push(`lead_id = $${pos}`);
+      values.push(input.leadId);
+      pos++;
+    }
+
+    // Replace order items when provided (only for received orders)
+    if (input.items !== undefined) {
+      const totalAmount = input.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+      await client.query(
+        "DELETE FROM order_items WHERE order_id = $1 AND company_id = $2",
+        [orderId, companyId]
+      );
+      for (const item of input.items) {
+        await client.query(
+          `INSERT INTO order_items (company_id, order_id, product_id, product_name, product_sku, quantity, unit_price, notes)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [
+            companyId,
+            orderId,
+            item.productId ?? null,
+            item.productName,
+            item.productSku ?? null,
+            item.quantity,
+            item.unitPrice,
+            item.notes ?? null,
+          ]
+        );
+      }
+      updates.push(`total_amount = $${pos}`);
+      values.push(totalAmount);
+      pos++;
+    }
+
+    if (updates.length > 0) {
+      values.push(orderId, companyId);
+      await client.query(
+        `UPDATE orders SET ${updates.join(", ")} WHERE id = $${pos++} AND company_id = $${pos}`,
+        values
+      );
+    }
+
+    await client.query("COMMIT");
+
+    const order = await getOrderById(
+      orderId,
+      companyId,
+      isRep,
+      companyUserId
+    );
+    if (!order) return jsonError(404, "Order not found");
+    return jsonOk({ order });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    return jsonError(500, error instanceof Error ? error.message : "Could not update order");
+  } finally {
+    client.release();
   }
-  if (input.notes !== undefined) {
-    updates.push(`notes = $${pos}`);
-    values.push(input.notes);
-    pos++;
-  }
-
-  if (!updates.length) return jsonError(400, "No fields provided to update");
-
-  values.push(orderId, companyId);
-
-  const result = await getDb().query(
-    `UPDATE orders SET ${updates.join(", ")} WHERE id = $${pos++} AND company_id = $${pos} RETURNING *`,
-    values
-  );
-
-  if (!result.rowCount) return jsonError(404, "Order not found");
-  return jsonOk({ order: result.rows[0] });
 }
 
