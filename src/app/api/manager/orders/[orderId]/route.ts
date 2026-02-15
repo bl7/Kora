@@ -155,7 +155,7 @@ export async function PATCH(
     await client.query("BEGIN");
 
     const updates: string[] = [];
-    const values: Array<string | null> = [];
+    const values: Array<string | number | null> = [];
     let pos = 1;
 
     if (input.status !== undefined) {
