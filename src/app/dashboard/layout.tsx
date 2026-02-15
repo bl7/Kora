@@ -11,6 +11,7 @@ const navItems = [
   { label: "Overview", href: "/dashboard", icon: GridIcon },
   { label: "Orders", href: "/dashboard/orders", icon: ClipboardIcon },
   { label: "Leads", href: "/dashboard/leads", icon: TargetIcon },
+  { label: "Tasks", href: "/dashboard/tasks", icon: ChecklistIcon },
   { label: "Products", href: "/dashboard/products", icon: PackageIcon },
   { label: "Staff", href: "/dashboard/staff", icon: UsersIcon },
   { label: "Shops", href: "/dashboard/shops", icon: StoreIcon },
@@ -248,6 +249,15 @@ function TargetIcon({ active }: { active: boolean }) {
       <circle cx="12" cy="12" r="10" />
       <circle cx="12" cy="12" r="6" />
       <circle cx="12" cy="12" r="2" />
+    </svg>
+  );
+}
+
+function ChecklistIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" className={active ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400 dark:text-zinc-500"}>
+      <path d="M9 11l3 3L22 4" />
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
     </svg>
   );
 }
