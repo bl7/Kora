@@ -203,6 +203,12 @@ export default function ShopsPage() {
           )}
         </div>
       )}
+      {viewVisitsShop && (
+        <VisitHistoryModal
+          shop={viewVisitsShop}
+          onClose={() => setViewVisitsShop(null)}
+        />
+      )}
     </div>
   );
 }
