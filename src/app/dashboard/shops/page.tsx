@@ -46,9 +46,14 @@ export default function ShopsPage() {
 
   async function onAdd(payload: {
     name: string;
-    latitude: number;
-    longitude: number;
+    latitude?: number;
+    longitude?: number;
     geofenceRadiusM: number;
+    address?: string;
+    contactName?: string;
+    contactEmail?: string;
+    contactPhone?: string;
+    notes?: string;
   }) {
     setWorking(true);
     const res = await fetch("/api/manager/shops", {
@@ -140,8 +145,8 @@ export default function ShopsPage() {
                       <span className="font-medium text-zinc-900 dark:text-zinc-100">{s.name}</span>
                     </div>
                   </td>
-                  <td className="px-5 py-3.5 text-zinc-600 dark:text-zinc-400">
-                    {s.latitude.toFixed(4)}, {s.longitude.toFixed(4)}
+                  <td className="px-5 py-3.5 text-zinc-600 dark:text-zinc-400 max-w-[200px] truncate">
+                    {s.address || (s.latitude && s.longitude ? `${s.latitude.toFixed(4)}, ${s.longitude.toFixed(4)}` : "No location")}
                   </td>
                   <td className="px-5 py-3.5 text-zinc-600 dark:text-zinc-400">{s.geofence_radius_m}m</td>
                   <td className="px-5 py-3.5">
@@ -204,28 +209,40 @@ function AddShopModal(props: {
   onClose: () => void;
   onSubmit: (payload: {
     name: string;
-    latitude: number;
-    longitude: number;
+    latitude?: number;
+    longitude?: number;
     geofenceRadiusM: number;
+    address?: string;
+    contactName?: string;
+    contactEmail?: string;
+    contactPhone?: string;
+    notes?: string;
   }) => Promise<void>;
   working: boolean;
 }) {
   const [name, setName] = useState("");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
-  const [geofenceRadiusM, setGeofenceRadiusM] = useState("60");
+  const [geofenceRadiusM, setGeofenceRadiusM] = useState("100");
+  const [address, setAddress] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [notes, setNotes] = useState("");
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     await props.onSubmit({
       name,
-      latitude: Number(latitude),
-      longitude: Number(longitude),
+      latitude: latitude ? Number(latitude) : undefined,
+      longitude: longitude ? Number(longitude) : undefined,
       geofenceRadiusM: Number(geofenceRadiusM),
+      address: address || undefined,
+      contactName: contactName || undefined,
+      contactEmail: contactEmail || undefined,
+      contactPhone: contactPhone || undefined,
+      notes: notes || undefined,
     });
-    setName("");
-    setLatitude("");
-    setLongitude("");
-    setGeofenceRadiusM("60");
     props.onClose();
   }
 
@@ -238,32 +255,62 @@ function AddShopModal(props: {
       aria-labelledby="add-shop-title"
     >
       <div
-        className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900"
+        className="w-full max-w-2xl rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="add-shop-title" className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-          Add Shop
+          Add New Shop
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Shop name</label>
-            <input required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="Shop name" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Latitude</label>
-              <input required type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} className={inputClass} placeholder="Latitude" />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Basic Info</h3>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Shop Name *</label>
+                <input required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="e.g. Acme Stores Central" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Address</label>
+                <input value={address} onChange={(e) => setAddress(e.target.value)} className={inputClass} placeholder="Physical address" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Latitude</label>
+                  <input type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} className={inputClass} placeholder="Optional" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Longitude</label>
+                  <input type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} className={inputClass} placeholder="Optional" />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Geofence radius (m)</label>
+                <input required type="number" min={1} value={geofenceRadiusM} onChange={(e) => setGeofenceRadiusM(e.target.value)} className={inputClass} />
+              </div>
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Longitude</label>
-              <input required type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} className={inputClass} placeholder="Longitude" />
+
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Contact Details</h3>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Contact Person</label>
+                <input value={contactName} onChange={(e) => setContactName(e.target.value)} className={inputClass} placeholder="Manager name" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Phone Number</label>
+                <input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} className={inputClass} placeholder="Contact number" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Email Address</label>
+                <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} className={inputClass} placeholder="Email" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Internal Notes</label>
+                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={`${inputClass} h-[106px] resize-none`} placeholder="Any extra details..." />
+              </div>
             </div>
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Geofence radius (m)</label>
-            <input required type="number" min={1} value={geofenceRadiusM} onChange={(e) => setGeofenceRadiusM(e.target.value)} className={inputClass} />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
+
+          <div className="flex justify-end gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800">
             <button type="button" onClick={props.onClose} className="rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800">
               Cancel
             </button>

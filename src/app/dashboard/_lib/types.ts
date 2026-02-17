@@ -45,11 +45,16 @@ export type Shop = {
   id: string;
   external_shop_code: string | null;
   name: string;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   geofence_radius_m: number;
   is_active: boolean;
   assignment_count: number;
+  address: string | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  notes: string | null;
 };
 
 export type StaffListResponse = {
