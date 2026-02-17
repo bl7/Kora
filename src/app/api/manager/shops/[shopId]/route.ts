@@ -102,7 +102,7 @@ export async function PATCH(
       return jsonError(403, "You can only update shops assigned to you");
     }
 
-    // Reps can only update location-related fields, name, address, and notes
+    // Reps cannot update administrative fields
     const forbiddenForReps = [
       "externalShopCode", "isActive", "timezone",
       "geofenceRadiusM", "arrivalPromptEnabled", "minDwellSeconds", "cooldownMinutes"
@@ -115,37 +115,39 @@ export async function PATCH(
   }
 
   const updates: string[] = [];
-  const values: Array<string | number | boolean | null> = [];
-  let position = 1;
+  const values: any[] = [];
 
-  setIfDefined(updates, values, "external_shop_code", input.externalShopCode, position++);
-  setIfDefined(updates, values, "name", input.name, position++);
-  setIfDefined(updates, values, "notes", input.notes, position++);
-  setIfDefined(updates, values, "contact_name", input.contactName, position++);
-  setIfDefined(updates, values, "phone", input.phone, position++);
-  setIfDefined(updates, values, "address", input.address, position++);
-  setIfDefined(updates, values, "latitude", input.latitude, position++);
-  setIfDefined(updates, values, "longitude", input.longitude, position++);
-  setIfDefined(updates, values, "geofence_radius_m", input.geofenceRadiusM, position++);
-  setIfDefined(updates, values, "location_source", input.locationSource, position++);
-  setIfDefined(updates, values, "location_verified", input.locationVerified, position++);
-  setIfDefined(updates, values, "location_accuracy_m", input.locationAccuracyM, position++);
-  setIfDefined(
-    updates,
-    values,
-    "arrival_prompt_enabled",
-    input.arrivalPromptEnabled,
-    position++
-  );
-  setIfDefined(updates, values, "min_dwell_seconds", input.minDwellSeconds, position++);
-  setIfDefined(updates, values, "cooldown_minutes", input.cooldownMinutes, position++);
-  setIfDefined(updates, values, "timezone", input.timezone, position++);
-  setIfDefined(updates, values, "is_active", input.isActive, position++);
+  const addUpdate = (column: string, value: any) => {
+    if (value !== undefined) {
+      updates.push(`${column} = $${values.length + 1}`);
+      values.push(value);
+    }
+  };
+
+  addUpdate("external_shop_code", input.externalShopCode);
+  addUpdate("name", input.name);
+  addUpdate("notes", input.notes);
+  addUpdate("contact_name", input.contactName);
+  addUpdate("phone", input.phone);
+  addUpdate("address", input.address);
+  addUpdate("latitude", input.latitude);
+  addUpdate("longitude", input.longitude);
+  addUpdate("geofence_radius_m", input.geofenceRadiusM);
+  addUpdate("location_source", input.locationSource);
+  addUpdate("location_verified", input.locationVerified);
+  addUpdate("location_accuracy_m", input.locationAccuracyM);
+  addUpdate("arrival_prompt_enabled", input.arrivalPromptEnabled);
+  addUpdate("min_dwell_seconds", input.minDwellSeconds);
+  addUpdate("cooldown_minutes", input.cooldownMinutes);
+  addUpdate("timezone", input.timezone);
+  addUpdate("is_active", input.isActive);
 
   if (!updates.length) {
     return jsonError(400, "No fields provided to update");
   }
 
+  const shopIdPos = values.length + 1;
+  const companyIdPos = values.length + 2;
   values.push(shopId, authResult.session.companyId);
 
   try {
@@ -153,8 +155,8 @@ export async function PATCH(
       `
       UPDATE shops
       SET ${updates.join(", ")}
-      WHERE id = $${position++}
-        AND company_id = $${position}
+      WHERE id = $${shopIdPos}
+        AND company_id = $${companyIdPos}
       RETURNING *
       `,
       values
