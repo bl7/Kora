@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { Staff, StaffCounts, StaffListResponse } from "../_lib/types";
+import type { Staff, StaffCounts, StaffListResponse, Visit, VisitListResponse } from "../_lib/types";
 import { useSession } from "../_lib/session-context";
 import { useToast } from "../_lib/toast-context";
 
@@ -72,6 +72,7 @@ export default function StaffPage() {
   const [editStaff, setEditStaff] = useState<Staff | null>(null);
   const [deactivateStaff, setDeactivateStaff] = useState<Staff | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [viewVisitsStaff, setViewVisitsStaff] = useState<Staff | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
@@ -449,6 +450,18 @@ export default function StaffPage() {
                 >
                   Edit details
                 </button>
+                {s.role === "rep" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpenId(null);
+                      setViewVisitsStaff(s);
+                    }}
+                    className="w-full px-3 py-2 text-left text-xs text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                  >
+                    View visit history
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {
@@ -526,6 +539,13 @@ export default function StaffPage() {
           onClose={() => { setDeactivateStaff(null); setDeactivatePreview(null); }}
           onConfirm={(reassignments) => handleDeactivate(deactivateStaff, reassignments)}
           working={working}
+        />
+      )}
+
+      {viewVisitsStaff && (
+        <VisitHistoryModal
+          staff={viewVisitsStaff}
+          onClose={() => setViewVisitsStaff(null)}
         />
       )}
     </div>
@@ -777,6 +797,96 @@ function DeactivateModal(props: {
             className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
             {props.working ? "Updating…" : needReassign ? "Reassign and deactivate" : "Deactivate"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VisitHistoryModal({ staff, onClose }: { staff: Staff; onClose: () => void }) {
+  const [visits, setVisits] = useState<Visit[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/manager/visits?rep=${staff.company_user_id}`)
+      .then((r) => r.json())
+      .then((d: VisitListResponse) => {
+        if (d.ok) setVisits(d.visits ?? []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [staff.company_user_id]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-zinc-900/40" onClick={onClose} />
+      <div className="relative flex max-h-[80vh] w-full max-w-2xl flex-col rounded-xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex items-center justify-between border-b border-zinc-100 p-5 dark:border-zinc-800">
+          <div>
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Visit History</h3>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">{staff.full_name} • {staff.email}</p>
+          </div>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
+            <span className="text-2xl">×</span>
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5">
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-20 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800" />
+              ))}
+            </div>
+          ) : visits.length === 0 ? (
+            <div className="py-12 text-center text-sm text-zinc-400">
+              No visit records found for this staff member.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {visits.map((v) => {
+                const start = new Date(v.started_at);
+                const end = v.ended_at ? new Date(v.ended_at) : null;
+                const duration = end ? Math.round((end.getTime() - start.getTime()) / 60000) : null;
+
+                return (
+                  <div key={v.id} className="rounded-lg border border-zinc-100 bg-zinc-50/50 p-4 dark:border-zinc-800 dark:bg-zinc-800/50">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="font-semibold text-zinc-900 dark:text-zinc-100">{v.shop_name}</h4>
+                        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+                          <span>📅 {start.toLocaleDateString()}</span>
+                          <span>🕒 {start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – {end ? end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "In progress"}</span>
+                          {duration !== null && (
+                            <span className="font-medium text-zinc-600 dark:text-zinc-300">⏱️ {duration} mins</span>
+                          )}
+                        </div>
+                      </div>
+                      {!v.ended_at && (
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    {v.notes && (
+                      <div className="mt-3 rounded border-l-2 border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-300">
+                        {v.notes}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-zinc-100 p-4 dark:border-zinc-800 text-right">
+          <button
+            onClick={onClose}
+            className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+          >
+            Close
           </button>
         </div>
       </div>

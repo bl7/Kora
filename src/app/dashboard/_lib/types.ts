@@ -73,3 +73,20 @@ export type ShopAssignmentListResponse = {
   assignments?: ShopAssignment[];
 };
 
+export type Visit = {
+  id: string;
+  shop_id: string;
+  rep_company_user_id: string;
+  started_at: string;
+  ended_at: string | null;
+  notes: string | null;
+  created_at: string;
+  shop_name: string;
+  rep_name: string;
+};
+
+export type VisitListResponse = {
+  ok: boolean;
+  error?: string;
+  visits?: Visit[];
+};
