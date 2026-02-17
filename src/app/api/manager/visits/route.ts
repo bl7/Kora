@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
       v.rep_company_user_id,
       v.started_at,
       v.ended_at,
+      v.notes,
       v.created_at,
       s.name AS shop_name,
       u.full_name AS rep_name
