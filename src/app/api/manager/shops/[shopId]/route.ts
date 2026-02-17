@@ -79,21 +79,44 @@ export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ shopId: string }> }
 ) {
-  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager"]);
+  const authResult = ensureRole(await getRequestSession(request), ["boss", "manager", "rep"]);
   if (!authResult.ok) {
     return authResult.response;
   }
 
+  const { shopId } = await context.params;
   const parseResult = updateShopSchema.safeParse(await request.json());
   if (!parseResult.success) {
     return jsonError(400, parseResult.error.issues[0]?.message ?? "Invalid body");
   }
 
+  const input = parseResult.data;
+  const isRep = authResult.session.role === "rep";
+
+  if (isRep) {
+    const isAssigned = await getDb().query(
+      `SELECT 1 FROM shop_assignments WHERE shop_id = $1 AND rep_company_user_id = $2 AND company_id = $3 LIMIT 1`,
+      [shopId, authResult.session.companyUserId, authResult.session.companyId]
+    );
+    if (!isAssigned.rowCount) {
+      return jsonError(403, "You can only update shops assigned to you");
+    }
+
+    // Reps can only update location-related fields, name, address, and notes
+    const forbiddenForReps = [
+      "externalShopCode", "isActive", "timezone",
+      "geofenceRadiusM", "arrivalPromptEnabled", "minDwellSeconds", "cooldownMinutes"
+    ];
+    for (const field of forbiddenForReps) {
+      if ((input as any)[field] !== undefined) {
+        return jsonError(403, `Sales Reps are not permitted to change the shop's "${field}"`);
+      }
+    }
+  }
+
   const updates: string[] = [];
   const values: Array<string | number | boolean | null> = [];
   let position = 1;
-
-  const input = parseResult.data;
 
   setIfDefined(updates, values, "external_shop_code", input.externalShopCode, position++);
   setIfDefined(updates, values, "name", input.name, position++);
@@ -123,7 +146,6 @@ export async function PATCH(
     return jsonError(400, "No fields provided to update");
   }
 
-  const { shopId } = await context.params;
   values.push(shopId, authResult.session.companyId);
 
   try {
