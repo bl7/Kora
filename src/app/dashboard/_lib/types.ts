@@ -90,3 +90,22 @@ export type VisitListResponse = {
   error?: string;
   visits?: Visit[];
 };
+
+export type AttendanceLog = {
+  id: string;
+  rep_company_user_id: string;
+  clock_in_at: string;
+  clock_out_at: string | null;
+  clock_in_latitude: number | null;
+  clock_in_longitude: number | null;
+  clock_out_latitude: number | null;
+  clock_out_longitude: number | null;
+  notes: string | null;
+  rep_name: string;
+};
+
+export type AttendanceLogListResponse = {
+  ok: boolean;
+  error?: string;
+  logs?: AttendanceLog[];
+};

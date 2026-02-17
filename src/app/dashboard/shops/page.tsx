@@ -6,6 +6,9 @@ import type { StaffListResponse } from "../_lib/types";
 import { useSession } from "../_lib/session-context";
 import { useToast } from "../_lib/toast-context";
 
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
+
 type Rep = { company_user_id: string; full_name: string };
 
 export default function ShopsPage() {
@@ -17,48 +20,29 @@ export default function ShopsPage() {
     session.user.role === "back_office";
   const canAddShop = session.user.role === "boss" || session.user.role === "manager";
 
-  const [shops, setShops] = useState<Shop[]>([]);
-  const [reps, setReps] = useState<Rep[]>([]);
-  const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [assignShop, setAssignShop] = useState<Shop | null>(null);
   const [viewVisitsShop, setViewVisitsShop] = useState<Shop | null>(null);
 
-  async function loadShops() {
-    const res = await fetch("/api/manager/shops");
-    const data = (await res.json()) as ShopListResponse;
-    if (!res.ok || !data.ok) {
-      toast.error(data.error ?? "Failed to load shops");
-      return;
-    }
-    setShops(data.shops ?? []);
-  }
+  const { data: shopsData, mutate: mutateShops } = useSWR<ShopListResponse>(
+    "/api/manager/shops",
+    fetcher,
+    { refreshInterval: 5000 }
+  );
+  
+  const { data: staffData } = useSWR<StaffListResponse>(
+    canAssignRep ? "/api/manager/staff" : null,
+    fetcher,
+    { refreshInterval: 10000 }
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const [shopsRes, staffRes] = await Promise.all([
-        fetch("/api/manager/shops"),
-        ...(canAssignRep ? [fetch("/api/manager/staff")] : [Promise.resolve(null)]),
-      ]);
-      if (cancelled) return;
-      const shopsData = (await shopsRes.json()) as ShopListResponse;
-      if (shopsRes.ok && shopsData.ok) setShops(shopsData.shops ?? []);
-      else toast.error((shopsData as { error?: string }).error ?? "Failed to load shops");
-      if (canAssignRep && staffRes) {
-        const staffData = (await (staffRes as Response).json()) as StaffListResponse;
-        if (staffData.ok && staffData.staff)
-          setReps(
-            staffData.staff
-              .filter((s) => s.role === "rep" && s.status === "active")
-              .map((s) => ({ company_user_id: s.company_user_id, full_name: s.full_name }))
-          );
-      }
-      setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [canAssignRep]);
+  const shops = shopsData?.shops ?? [];
+  const reps = (staffData?.staff ?? [])
+    .filter((s) => s.role === "rep" && s.status === "active")
+    .map((s) => ({ company_user_id: s.company_user_id, full_name: s.full_name }));
+
+  const loading = !shopsData;
 
   async function onAdd(payload: {
     name: string;
@@ -80,7 +64,7 @@ export default function ShopsPage() {
     }
     toast.success("Shop added.");
     setShowForm(false);
-    await loadShops();
+    mutateShops();
   }
 
   return (
@@ -118,7 +102,7 @@ export default function ShopsPage() {
           onClose={() => setAssignShop(null)}
           onSuccess={() => {
             setAssignShop(null);
-            loadShops();
+            mutateShops();
           }}
           toast={toast}
         />

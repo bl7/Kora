@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import { useToast } from "../_lib/toast-context";
 import { useSession } from "../_lib/session-context";
 
@@ -78,6 +80,8 @@ const SORT_BY_TAB: Record<string, string> = {
   cancelled: "placed_at_desc",
 };
 
+type Counts = { received: number; processing: number; shipped: number; closed: number; cancelled: number };
+
 function buildOrdersQuery(
   mainTab: MainTab,
   subTab: SubTab,
@@ -107,80 +111,63 @@ export default function OrdersPage() {
   const [subTab, setSubTab] = useState<SubTab>("received");
   const [filters, setFilters] = useState({ q: "", dateFrom: "", dateTo: "", repId: "", shopId: "" });
   const [appliedFilters, setAppliedFilters] = useState(filters);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [counts, setCounts] = useState({ received: 0, processing: 0, shipped: 0, closed: 0, cancelled: 0 });
-  const [shops, setShops] = useState<Shop[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [reps, setReps] = useState<Rep[]>([]);
-  const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [drawerOrderId, setDrawerOrderId] = useState<string | null>(null);
-  const [drawerOrder, setDrawerOrder] = useState<OrderDetail | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [cancelModal, setCancelModal] = useState<{ orderId: string; reason: string; note: string } | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   const statusForFetch = mainTab === "active" ? subTab : mainTab;
 
-  const loadOrders = useCallback(async () => {
-    const query = buildOrdersQuery(mainTab, subTab, appliedFilters);
-    const res = await fetch(`/api/manager/orders?${query}`);
-    const data = (await res.json()) as { ok: boolean; orders?: Order[]; error?: string };
-    if (res.ok && data.ok) setOrders(data.orders ?? []);
-    else toast.error(data.error ?? "Failed to load orders");
-  }, [mainTab, subTab, appliedFilters, toast]);
+  const query = buildOrdersQuery(mainTab, subTab, appliedFilters);
 
-  const loadCounts = useCallback(async () => {
-    const res = await fetch("/api/manager/orders/counts");
-    const data = (await res.json()) as { ok: boolean; counts?: typeof counts };
-    if (res.ok && data.ok && data.counts) setCounts(data.counts);
-  }, []);
+  const { data: ordersData, mutate: mutateOrders } = useSWR<{ ok: boolean; orders?: Order[] }>(
+    `/api/manager/orders?${query}`,
+    fetcher,
+    { refreshInterval: 5000 }
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    (async () => {
-      await loadOrders();
-      if (!cancelled) setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [loadOrders]);
+  const { data: countsData, mutate: mutateCounts } = useSWR<{ ok: boolean; counts?: Counts }>(
+    "/api/manager/orders/counts",
+    fetcher,
+    { refreshInterval: 10000 }
+  );
 
-  useEffect(() => {
-    loadCounts();
-  }, [loadCounts]);
+  const { data: shopsData } = useSWR<{ shops?: Shop[] }>(
+    "/api/manager/shops",
+    fetcher,
+    { refreshInterval: 10000 }
+  );
 
-  useEffect(() => {
-    if (drawerOrderId) {
-      (async () => {
-        const res = await fetch(`/api/manager/orders/${drawerOrderId}`);
-        const data = (await res.json()) as { ok: boolean; order?: OrderDetail; error?: string };
-        if (res.ok && data.order) setDrawerOrder(data.order);
-        else setDrawerOrder(null);
-      })();
-    } else {
-      setDrawerOrder(null);
-    }
-  }, [drawerOrderId]);
+  const { data: productsData } = useSWR<{ products?: Product[] }>(
+    "/api/manager/products",
+    fetcher,
+    { refreshInterval: 10000 }
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const [shopsRes, productsRes, staffRes] = await Promise.all([
-        fetch("/api/manager/shops"),
-        fetch("/api/manager/products"),
-        fetch("/api/manager/staff"),
-      ]);
-      if (cancelled) return;
-      const shopsData = (await shopsRes.json()) as { shops?: Shop[] };
-      const productsData = (await productsRes.json()) as { products?: Product[] };
-      const staffData = (await staffRes.json()) as { ok: boolean; staff?: { company_user_id: string; full_name: string; role: string }[] };
-      setShops(shopsData.shops ?? []);
-      setProducts(productsData.products ?? []);
-      setReps((staffData.staff ?? []).filter((s) => s.role === "rep").map((s) => ({ company_user_id: s.company_user_id, full_name: s.full_name })));
-    })();
-    return () => { cancelled = true; };
-  }, []);
+  const { data: staffData } = useSWR<{ ok: boolean; staff?: { company_user_id: string; full_name: string; role: string }[] }>(
+    "/api/manager/staff",
+    fetcher,
+    { refreshInterval: 10000 }
+  );
+
+  // Drawer order SWR
+  const { data: drawerOrderData, mutate: mutateDrawerOrder } = useSWR<{ ok: boolean; order?: OrderDetail }>(
+    drawerOrderId ? `/api/manager/orders/${drawerOrderId}` : null,
+    fetcher,
+    { refreshInterval: 2000 }
+  );
+
+  const orders = ordersData?.orders ?? [];
+  const counts = countsData?.counts ?? { received: 0, processing: 0, shipped: 0, closed: 0, cancelled: 0 };
+  const shops = shopsData?.shops ?? [];
+  const products = productsData?.products ?? [];
+  const reps = (staffData?.staff ?? [])
+    .filter((s) => s.role === "rep")
+    .map((s) => ({ company_user_id: s.company_user_id, full_name: s.full_name }));
+  
+  const drawerOrder = drawerOrderData?.order ?? null;
+  const loading = !ordersData || !countsData || !shopsData || !productsData || !staffData;
 
   const activeCount = counts.received + counts.processing;
 
@@ -200,10 +187,10 @@ export default function OrdersPage() {
       }
       toast.success(nextStatus === "processing" ? "Order started processing." : nextStatus === "shipped" ? "Order marked shipped." : "Order closed.");
       setDrawerOrderId(null);
-      await loadOrders();
-      await loadCounts();
+      mutateOrders();
+      mutateCounts();
     },
-    [toast, loadOrders, loadCounts]
+    [toast, mutateOrders, mutateCounts]
   );
 
   const cancelOrder = useCallback(
@@ -223,10 +210,10 @@ export default function OrdersPage() {
       }
       toast.success("Order cancelled.");
       setDrawerOrderId(null);
-      await loadOrders();
-      await loadCounts();
+      mutateOrders();
+      mutateCounts();
     },
-    [toast, loadOrders, loadCounts]
+    [toast, mutateOrders, mutateCounts]
   );
 
   const bulkTransition = useCallback(
@@ -244,10 +231,10 @@ export default function OrdersPage() {
       setWorking(false);
       setSelectedIds(new Set());
       toast.success(`${ok} order(s) updated.`);
-      await loadOrders();
-      await loadCounts();
+      mutateOrders();
+      mutateCounts();
     },
-    [toast, loadOrders, loadCounts]
+    [toast, mutateOrders, mutateCounts]
   );
 
   const bulkCancel = useCallback(
@@ -265,10 +252,10 @@ export default function OrdersPage() {
       setWorking(false);
       setSelectedIds(new Set());
       toast.success(`${ok} order(s) cancelled.`);
-      await loadOrders();
-      await loadCounts();
+      mutateOrders();
+      mutateCounts();
     },
-    [toast, loadOrders, loadCounts]
+    [toast, mutateOrders, mutateCounts]
   );
 
   const exportCSV = useCallback((list: Order[]) => {
@@ -354,8 +341,8 @@ export default function OrdersPage() {
             }
             toast.success("Order created.");
             setShowCreateForm(false);
-            await loadOrders();
-            await loadCounts();
+            mutateOrders();
+            mutateCounts();
           }}
         />
       )}
@@ -410,7 +397,7 @@ export default function OrdersPage() {
           placeholder="Search order ID, shop, rep…"
           value={filters.q}
           onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
-          onKeyDown={(e) => e.key === "Enter" && loadOrders()}
+          onKeyDown={(e) => e.key === "Enter" && setAppliedFilters(filters)}
           className={`${inputClass} min-w-[200px]`}
         />
         <input

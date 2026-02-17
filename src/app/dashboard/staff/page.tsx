@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import type { Staff, StaffCounts, StaffListResponse, Visit, VisitListResponse } from "../_lib/types";
 import { useSession } from "../_lib/session-context";
 import { useToast } from "../_lib/toast-context";
@@ -61,9 +64,7 @@ export default function StaffPage() {
   const session = useSession();
   const toast = useToast();
   const canManage = session.user.role === "boss" || session.user.role === "manager";
-  const [staff, setStaff] = useState<Staff[]>([]);
-  const [counts, setCounts] = useState<StaffCounts>({ active: 0, invited: 0, inactive: 0 });
-  const [loading, setLoading] = useState(true);
+
   const [working, setWorking] = useState(false);
   const [tab, setTab] = useState<Tab>("active");
   const [searchInput, setSearchInput] = useState("");
@@ -80,29 +81,23 @@ export default function StaffPage() {
   const debouncedQ = useDebounce(searchInput.trim(), 300);
   const debouncedRole = useDebounce(roleFilter, 0);
 
-  const loadStaff = useCallback(async () => {
-    const params = new URLSearchParams();
-    params.set("status", tab);
-    if (debouncedQ) params.set("q", debouncedQ);
-    if (debouncedRole) params.set("role", debouncedRole);
-    const res = await fetch(`/api/manager/staff?${params.toString()}`);
-    const data = (await res.json()) as StaffListResponse;
-    if (!res.ok || !data.ok) {
-      toast.error(data.error ?? "Failed to load staff");
-      return;
-    }
-    setStaff(data.staff ?? []);
-    if (data.counts) setCounts(data.counts);
-  }, [tab, debouncedQ, debouncedRole, toast]);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    loadStaff().then(() => {
-      if (!cancelled) setLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [loadStaff]);
+
+  const params = new URLSearchParams();
+  params.set("status", tab);
+  if (debouncedQ) params.set("q", debouncedQ);
+  if (debouncedRole) params.set("role", debouncedRole);
+
+  const { data: staffData, mutate: mutateStaff } = useSWR<StaffListResponse>(
+    `/api/manager/staff?${params.toString()}`,
+    fetcher,
+    { refreshInterval: 5000 }
+  );
+
+  const staff = staffData?.staff ?? [];
+  const counts = staffData?.counts ?? { active: 0, invited: 0, inactive: 0 };
+  const loading = !staffData;
+
 
   useLayoutEffect(() => {
     if (!menuOpenId || !menuRef.current) {
@@ -151,7 +146,7 @@ export default function StaffPage() {
     }
     toast.success(`Invite sent to ${payload.email}`);
     setAddDrawerOpen(false);
-    loadStaff();
+    mutateStaff();
   }
 
   async function handleUpdate(id: string, payload: { fullName?: string; email?: string; phone?: string; role?: string }) {
@@ -175,7 +170,7 @@ export default function StaffPage() {
     }
     toast.success("Staff updated.");
     setEditStaff(null);
-    loadStaff();
+    mutateStaff();
   }
 
   async function handleResendInvite(s: Staff) {
@@ -189,7 +184,7 @@ export default function StaffPage() {
       return;
     }
     toast.success(`Invite resent to ${s.email}`);
-    loadStaff();
+    mutateStaff();
   }
 
   async function handleDeactivate(s: Staff, reassignments?: Record<string, string>) {
@@ -209,7 +204,7 @@ export default function StaffPage() {
       return;
     }
     toast.success("Staff deactivated.");
-    loadStaff();
+    mutateStaff();
   }
 
   async function handleActivate(s: Staff) {
@@ -223,7 +218,7 @@ export default function StaffPage() {
       return;
     }
     toast.success("Staff activated.");
-    loadStaff();
+    mutateStaff();
   }
 
   const [activeReps, setActiveReps] = useState<Staff[]>([]);
@@ -348,10 +343,9 @@ export default function StaffPage() {
             <thead>
               <tr className="border-b border-zinc-200 dark:border-zinc-800">
                 <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Name</th>
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Email</th>
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Phone</th>
                 <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Role</th>
                 <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Status</th>
+                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Contact</th>
                 <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Last login</th>
                 <th className="w-28 px-4 py-3" />
               </tr>
@@ -360,15 +354,16 @@ export default function StaffPage() {
               {staff.map((s) => (
                 <tr key={s.company_user_id} className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60">
                   <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-sm font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                    <Link href={`/dashboard/staff/${s.company_user_id}`} className="group flex items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-sm font-semibold text-zinc-600 transition-colors group-hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:group-hover:bg-zinc-700">
                         {initials(s.full_name)}
                       </div>
-                      <span className="font-medium text-zinc-900 dark:text-zinc-100">{s.full_name}</span>
-                    </div>
+                      <div>
+                        <div className="font-medium text-zinc-900 group-hover:text-blue-600 dark:text-zinc-100 dark:group-hover:text-blue-400">{s.full_name}</div>
+                        <div className="text-xs text-zinc-500 dark:text-zinc-400">{s.email}</div>
+                      </div>
+                    </Link>
                   </td>
-                  <td className="px-5 py-3.5 text-zinc-600 dark:text-zinc-400">{s.email}</td>
-                  <td className="px-5 py-3.5 text-zinc-600 dark:text-zinc-400">{s.phone ?? "—"}</td>
                   <td className="px-5 py-3.5">
                     <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                       {s.role === "back_office" ? "Back office" : s.role === "boss" ? "Admin" : s.role}
@@ -386,6 +381,13 @@ export default function StaffPage() {
                     >
                       {s.status}
                     </span>
+                  </td>
+                  <td className="px-5 py-3.5 text-zinc-600 dark:text-zinc-400">
+                    {s.phone ? (
+                       <a href={`tel:${s.phone}`} className="hover:underline">{s.phone}</a>
+                    ) : (
+                      <span className="text-zinc-400">—</span>
+                    )}
                   </td>
                   <td className="px-5 py-3.5 text-zinc-500 dark:text-zinc-400">
                     {formatLastLogin(s.last_login_at)}
@@ -450,18 +452,6 @@ export default function StaffPage() {
                 >
                   Edit details
                 </button>
-                {s.role === "rep" && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpenId(null);
-                      setViewVisitsStaff(s);
-                    }}
-                    className="w-full px-3 py-2 text-left text-xs text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                  >
-                    View visit history
-                  </button>
-                )}
                 <button
                   type="button"
                   onClick={() => {

@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import { useToast } from "../_lib/toast-context";
 
 type Lead = {
@@ -43,46 +45,38 @@ const inputClass =
 
 export default function LeadsPage() {
   const toast = useToast();
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [shops, setShops] = useState<Shop[]>([]);
-  const [reps, setReps] = useState<Staff[]>([]);
-  const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [filterStatus, setFilterStatus] = useState("");
   const [search, setSearch] = useState("");
 
-  async function loadLeads(status = filterStatus, q = search) {
-    const params = new URLSearchParams();
-    if (status) params.set("status", status);
-    if (q) params.set("q", q);
-    const res = await fetch(`/api/manager/leads?${params}`);
-    const data = (await res.json()) as { ok: boolean; leads?: Lead[]; error?: string };
-    if (res.ok && data.ok) setLeads(data.leads ?? []);
-    else toast.error(data.error ?? "Failed to load leads");
-  }
+  const params = new URLSearchParams();
+  if (filterStatus) params.set("status", filterStatus);
+  if (search) params.set("q", search);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const [leadsRes, shopsRes, staffRes] = await Promise.all([
-        fetch("/api/manager/leads"),
-        fetch("/api/manager/shops"),
-        fetch("/api/manager/staff"),
-      ]);
-      const leadsData = (await leadsRes.json()) as { ok: boolean; leads?: Lead[] };
-      const shopsData = (await shopsRes.json()) as { shops?: Shop[] };
-      const staffData = (await staffRes.json()) as { ok: boolean; staff?: Staff[] };
-      if (cancelled) return;
-      if (leadsRes.ok && leadsData.ok) setLeads(leadsData.leads ?? []);
-      else toast.error((leadsData as { error?: string }).error ?? "Failed to load leads");
-      setShops(shopsData.shops ?? []);
-      setReps((staffData.staff ?? []).filter((s) => s.role === "rep"));
-      setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, []);
+  const { data: leadsData, mutate: mutateLeads } = useSWR<{ ok: boolean; leads?: Lead[] }>(
+    `/api/manager/leads?${params}`,
+    fetcher,
+    { refreshInterval: 5000 }
+  );
+
+  const { data: shopsData } = useSWR<{ shops?: Shop[] }>(
+    "/api/manager/shops",
+    fetcher,
+    { refreshInterval: 10000 }
+  );
+
+  const { data: staffData } = useSWR<{ ok: boolean; staff?: Staff[] }>(
+    "/api/manager/staff",
+    fetcher,
+    { refreshInterval: 10000 }
+  );
+
+  const leads = leadsData?.leads ?? [];
+  const shops = shopsData?.shops ?? [];
+  const reps = (staffData?.staff ?? []).filter((s) => s.role === "rep");
+  const loading = !leadsData || !shopsData || !staffData;
 
   async function onCreate(payload: {
     shopId?: string;
@@ -108,7 +102,7 @@ export default function LeadsPage() {
     }
     toast.success("Lead created.");
     setAddModalOpen(false);
-    await loadLeads();
+    mutateLeads();
   }
 
   async function onUpdate(leadId: string, payload: Record<string, unknown>) {
@@ -126,7 +120,7 @@ export default function LeadsPage() {
     }
     toast.success("Lead updated.");
     setEditingLead(null);
-    await loadLeads();
+    mutateLeads();
   }
 
   async function onDelete(leadId: string) {
@@ -140,7 +134,7 @@ export default function LeadsPage() {
       return;
     }
     toast.success("Lead deleted.");
-    await loadLeads();
+    mutateLeads();
   }
 
   async function onConvertToShop(l: Lead) {
@@ -164,17 +158,15 @@ export default function LeadsPage() {
         ? `"${data.shop.name}" created. You can now place orders for this shop.`
         : data.message ?? "Lead converted to shop."
     );
-    await loadLeads();
+    mutateLeads();
   }
 
   function handleFilter(status: string) {
     setFilterStatus(status);
-    loadLeads(status, search);
   }
 
   function handleSearch(q: string) {
     setSearch(q);
-    loadLeads(filterStatus, q);
   }
 
   const selectClass =
