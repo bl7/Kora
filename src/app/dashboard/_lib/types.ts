@@ -55,6 +55,9 @@ export type Shop = {
   contact_email: string | null;
   contact_phone: string | null;
   notes: string | null;
+  operating_hours: string | null;
+  preferred_visit_days: string | null;
+  payment_status: string | null;
 };
 
 export type StaffListResponse = {
@@ -68,6 +71,7 @@ export type ShopListResponse = { ok: boolean; error?: string; shops?: Shop[] };
 export type ShopAssignment = {
   id: string;
   shop_id: string;
+  shop_name?: string;
   rep_company_user_id: string;
   is_primary: boolean;
 };
@@ -76,6 +80,69 @@ export type ShopAssignmentListResponse = {
   ok: boolean;
   error?: string;
   assignments?: ShopAssignment[];
+};
+
+export type Lead = {
+  id: string;
+  name: string;
+  contact_name: string;
+  phone: string;
+  email: string;
+  address: string;
+  status: string;
+  shop_id: string | null;
+  shop_name?: string | null;
+  assigned_rep_company_user_id: string | null;
+  assigned_rep_name?: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type LeadListResponse = {
+  ok: boolean,
+  error?: string;
+  leads?: Lead[];
+};
+
+export type Task = {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  deadline: string;
+  rep_company_user_id: string;
+  rep_name?: string;
+  shop_id: string | null;
+  shop_name?: string | null;
+  lead_id: string | null;
+  lead_name?: string | null;
+  created_at: string;
+};
+
+export type TaskListResponse = {
+  ok: boolean;
+  error?: string;
+  tasks?: Task[];
+};
+
+export type Order = {
+  id: string;
+  order_number: string;
+  shop_id: string;
+  shop_name?: string;
+  rep_company_user_id: string;
+  rep_name?: string;
+  total_amount: string;
+  status: string;
+  notes: string | null;
+  created_at: string;
+  placed_at?: string;
+};
+
+export type OrderListResponse = {
+  ok: boolean;
+  error?: string;
+  orders?: Order[];
 };
 
 export type Visit = {
@@ -113,4 +180,24 @@ export type AttendanceLogListResponse = {
   ok: boolean;
   error?: string;
   logs?: AttendanceLog[];
+};
+
+export type Product = {
+  id: string;
+  sku: string;
+  name: string;
+  description: string | null;
+  unit: string;
+  is_active: boolean;
+  current_price: string | null;
+  currency_code: string | null;
+  created_at: string;
+  updated_at: string;
+  order_count?: number;
+};
+
+export type ProductListResponse = {
+  ok: boolean;
+  error?: string;
+  products?: Product[];
 };

@@ -1,69 +1,159 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { Shop, ShopListResponse, Visit, VisitListResponse } from "../_lib/types";
-import type { StaffListResponse } from "../_lib/types";
+import { useEffect, useState, useMemo, useRef } from "react";
+import Link from "next/link";
+import type { 
+  Shop, 
+  ShopListResponse, 
+  Visit, 
+  VisitListResponse, 
+  StaffListResponse, 
+  ShopAssignmentListResponse,
+  ShopAssignment
+} from "../_lib/types";
 import { useSession } from "../_lib/session-context";
 import { useToast } from "../_lib/toast-context";
-
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 
 type Rep = { company_user_id: string; full_name: string };
 
+function StatCard({ title, value, trend, trendUp, icon }: { 
+  title: string; 
+  value: string; 
+  trend?: string; 
+  trendUp?: boolean; 
+  icon: 'shop' | 'calendar';
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-[24px] border border-zinc-200 bg-white p-7 shadow-sm transition-all hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="space-y-2">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-zinc-400">{title}</p>
+        <div className="flex items-baseline gap-2">
+          <span className="text-4xl font-black text-zinc-900 dark:text-zinc-100">{value}</span>
+        </div>
+        {trend && (
+          <p className={`flex items-center gap-1 text-[11px] font-bold ${trendUp ? "text-emerald-500" : "text-zinc-400"}`}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={trendUp ? "" : "rotate-180"}>
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+            </svg>
+            {trend}
+          </p>
+        )}
+      </div>
+      <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${icon === 'shop' ? 'bg-orange-50 text-orange-500' : 'bg-emerald-50 text-emerald-500'} dark:bg-zinc-800`}>
+        {icon === 'shop' ? (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        ) : (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
+  return (name[0] ?? "?").toUpperCase();
+}
+
 export default function ShopsPage() {
   const session = useSession();
   const toast = useToast();
-  const canAssignRep =
-    session.user.role === "boss" ||
-    session.user.role === "manager" ||
-    session.user.role === "back_office";
-  const canAddShop = session.user.role === "boss" || session.user.role === "manager";
-
+  const [tab, setTab] = useState<"all" | "visited">("all");
   const [working, setWorking] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [assignShop, setAssignShop] = useState<Shop | null>(null);
   const [viewVisitsShop, setViewVisitsShop] = useState<Shop | null>(null);
+  const [searchInput, setSearchInput] = useState("");
 
   const { data: shopsData, mutate: mutateShops } = useSWR<ShopListResponse>(
     "/api/manager/shops",
-    fetcher,
-    { refreshInterval: 5000 }
+    fetcher
   );
   
   const { data: staffData } = useSWR<StaffListResponse>(
-    canAssignRep ? "/api/manager/staff" : null,
-    fetcher,
-    { refreshInterval: 10000 }
+    "/api/manager/staff",
+    fetcher
+  );
+
+  const { data: assignmentsData } = useSWR<ShopAssignmentListResponse>(
+    "/api/manager/shop-assignments",
+    fetcher
+  );
+
+  const { data: visitsData } = useSWR<VisitListResponse>(
+    "/api/manager/visits",
+    fetcher
   );
 
   const shops = shopsData?.shops ?? [];
-  const reps = (staffData?.staff ?? [])
-    .filter((s) => s.role === "rep" && s.status === "active")
-    .map((s) => ({ company_user_id: s.company_user_id, full_name: s.full_name }));
+  const assignments = assignmentsData?.assignments ?? [];
+  const visits = visitsData?.visits ?? [];
+  const reps = (staffData?.staff ?? []).filter(s => s.role === 'rep' && s.status === 'active');
 
-  const loading = !shopsData;
+  const loading = !shopsData || !staffData || !assignmentsData || !visitsData;
 
-  async function onAdd(payload: {
-    name: string;
-    latitude?: number;
-    longitude?: number;
-    geofenceRadiusM: number;
-    address?: string;
-    contactName?: string;
-    contactEmail?: string;
-    contactPhone?: string;
-    notes?: string;
-  }) {
+  const stats = useMemo(() => {
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0,0,0,0);
+
+    const visitedThisWeek = new Set(
+      visits
+        .filter(v => new Date(v.started_at) >= startOfWeek)
+        .map(v => v.shop_id)
+    ).size;
+
+    return {
+      total: shops.length,
+      visitedThisWeek
+    };
+  }, [shops, visits]);
+
+  const shopRows = useMemo(() => {
+    const today = new Date().toDateString();
+    
+    return shops.map(shop => {
+      const shopAssignments = assignments.filter(a => a.shop_id === shop.id);
+      const primaryAssignment = shopAssignments.find(a => a.is_primary) || shopAssignments[0];
+      const assignedRep = primaryAssignment 
+        ? reps.find(r => r.company_user_id === primaryAssignment.rep_company_user_id) 
+        : null;
+
+      const shopVisits = visits
+        .filter(v => v.shop_id === shop.id)
+        .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
+      
+      const lastVisit = shopVisits[0];
+      const visitedToday = shopVisits.some(v => new Date(v.started_at).toDateString() === today);
+
+      return {
+        ...shop,
+        assignedRep,
+        lastVisitDate: lastVisit ? new Date(lastVisit.started_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : "--",
+        visitedToday
+      };
+    }).filter(s => {
+        const matchesSearch = s.name.toLowerCase().includes(searchInput.toLowerCase()) || 
+                             (s.address?.toLowerCase() || "").includes(searchInput.toLowerCase());
+        const matchesTab = tab === "all" || s.visitedToday;
+        return matchesSearch && matchesTab;
+    });
+  }, [shops, assignments, reps, visits, searchInput, tab]);
+
+  async function onAdd(payload: any) {
     setWorking(true);
     const res = await fetch("/api/manager/shops", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const data = (await res.json()) as { ok: boolean; error?: string };
+    const data = await res.json();
     setWorking(false);
-    if (!res.ok || !data.ok) {
+    if (!data.ok) {
       toast.error(data.error ?? "Could not create shop");
       return;
     }
@@ -73,23 +163,156 @@ export default function ShopsPage() {
   }
 
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">Shops</h1>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Manage shop locations and geofencing for visit verification.
-          </p>
+    <div className="space-y-8 p-4 md:p-0">
+      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Shops & Client Directory</h1>
+          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Manage shop locations and representative visit schedules.</p>
         </div>
-        {canAddShop && (
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            + Add Shop
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+            <button className="flex h-11 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-5 text-xs font-bold uppercase tracking-widest text-zinc-600 transition-all hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export List
+            </button>
+            <button 
+                onClick={() => setShowForm(true)}
+                className="flex h-11 items-center gap-2 rounded-xl bg-[#f4a261] px-6 text-xs font-bold uppercase tracking-widest text-white shadow-lg shadow-[#f4a261]/20 transition-all hover:brightness-110"
+            >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add New Shop
+            </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <StatCard title="TOTAL SHOPS" value={stats.total.toLocaleString()} trend="12% vs last month" trendUp={true} icon="shop" />
+        <StatCard title="VISITED THIS WEEK" value={stats.visitedThisWeek.toLocaleString()} trend="5.4% vs last week" trendUp={true} icon="calendar" />
+      </div>
+
+      <div className="rounded-[32px] border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between mb-8">
+            <div className="flex rounded-2xl bg-zinc-50 p-1 dark:bg-zinc-800/60">
+                <button 
+                    onClick={() => setTab("all")}
+                    className={`rounded-xl px-6 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all ${tab === "all" ? "bg-zinc-900 text-white shadow-lg dark:bg-zinc-700" : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"}`}
+                >
+                    All Shops
+                </button>
+                <button 
+                    onClick={() => setTab("visited")}
+                    className={`rounded-xl px-6 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all ${tab === "visited" ? "bg-zinc-900 text-white shadow-lg dark:bg-zinc-700" : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"}`}
+                >
+                    Visited Today
+                </button>
+            </div>
+            <div className="flex items-center gap-3">
+                <div className="relative">
+                    <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input 
+                        type="text" 
+                        placeholder="Search shops or locations..."
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
+                        className="h-11 w-full rounded-xl border border-zinc-100 bg-zinc-50/50 pl-11 pr-4 text-xs font-bold outline-none ring-zinc-500/10 transition-all focus:border-zinc-300 focus:ring-4 dark:border-zinc-800 dark:bg-zinc-800/40 md:w-64"
+                    />
+                </div>
+                <button className="flex h-11 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 text-xs font-bold text-zinc-600 transition-all hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 3H2l8 9v6l4 2V12l8-9z"/></svg>
+                    More Filters
+                </button>
+            </div>
+        </div>
+
+        <div className="overflow-x-auto">
+            <table className="w-full text-left">
+                <thead>
+                    <tr className="border-b border-zinc-100 dark:border-zinc-800">
+                        <th className="pb-5 pl-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">SHOP DETAILS</th>
+                        <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">ASSIGNED REPRESENTATIVE</th>
+                        <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">LAST VISIT</th>
+                        <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">STATUS</th>
+                        <th className="pb-5 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400">ACTION</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/40">
+                    {loading ? (
+                        Array.from({ length: 5 }).map((_, i) => (
+                            <tr key={i} className="animate-pulse">
+                                <td colSpan={5} className="py-8"><div className="h-10 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40" /></td>
+                            </tr>
+                        ))
+                    ) : shopRows.map((s) => (
+                        <tr key={s.id} className="group hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20">
+                            <td className="py-6 pl-2">
+                                <div className="flex items-center gap-4">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-500 dark:bg-indigo-900/20">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"/></svg>
+                                    </div>
+                                    <div>
+                                        <Link href={`/dashboard/shops/${s.id}`}>
+                                          <p className="text-[13px] font-black text-zinc-900 transition-colors hover:text-[#f4a261] dark:text-zinc-100 dark:hover:text-[#f4a261]">{s.name}</p>
+                                        </Link>
+                                        <p className="text-[11px] font-medium text-zinc-400">{s.address || "No address provided"}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td className="py-6">
+                                {s.assignedRep ? (
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-zinc-100 text-[10px] font-black text-zinc-500 dark:bg-zinc-800">
+                                            {initials(s.assignedRep.full_name)}
+                                        </div>
+                                        <span className="text-[12px] font-bold text-zinc-700 dark:text-zinc-300">{s.assignedRep.full_name}</span>
+                                    </div>
+                                ) : (
+                                    <span className="text-xs font-bold text-zinc-300 dark:text-zinc-600">Unassigned</span>
+                                )}
+                            </td>
+                            <td className="py-6 text-[12px] font-bold text-zinc-500 dark:text-zinc-400">
+                                {s.lastVisitDate}
+                            </td>
+                            <td className="py-6">
+                                {s.visitedToday ? (
+                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">
+                                        <span className="h-1 w-1 rounded-full bg-emerald-500" />
+                                        Visited Today
+                                    </span>
+                                ) : (
+                                    <span className="text-xs font-bold text-zinc-300 dark:text-zinc-600">—</span>
+                                )}
+                            </td>
+                            <td className="py-6 text-right">
+                                <button 
+                                    onClick={() => setViewVisitsShop(s)}
+                                    className="rounded-xl p-2 text-zinc-400 transition-all hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800"
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                                </button>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+
+        <div className="mt-8 flex items-center justify-between border-t border-zinc-100 pt-8 dark:border-zinc-800">
+            <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">
+                Showing {shopRows.length} of {stats.total} entries
+            </p>
+            <div className="flex items-center gap-2">
+                <button className="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 text-zinc-400 transition-all hover:bg-zinc-50 dark:border-zinc-800">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                {[1, 2, 3].map(p => (
+                    <button key={p} className={`h-9 w-9 rounded-xl text-[11px] font-black transition-all ${p === 1 ? 'bg-[#f4a261] text-white shadow-lg shadow-[#f4a261]/20' : 'border border-zinc-100 text-zinc-400 hover:bg-zinc-50 dark:border-zinc-800'}`}>
+                        {p}
+                    </button>
+                ))}
+                <button className="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 text-zinc-400 transition-all hover:bg-zinc-50 dark:border-zinc-800">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+            </div>
+        </div>
       </div>
 
       {showForm && (
@@ -100,98 +323,6 @@ export default function ShopsPage() {
         />
       )}
 
-      {assignShop && (
-        <AssignRepModal
-          shop={assignShop}
-          reps={reps}
-          onClose={() => setAssignShop(null)}
-          onSuccess={() => {
-            setAssignShop(null);
-            mutateShops();
-          }}
-          toast={toast}
-        />
-      )}
-
-      {loading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-xl bg-zinc-200/60 dark:bg-zinc-800/60" />
-          ))}
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-          <table className="w-full min-w-[520px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Name</th>
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Location</th>
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Radius</th>
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Reps Assigned</th>
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">History</th>
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shops.map((s) => (
-                <tr key={s.id} className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500 dark:text-zinc-400">
-                          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z" />
-                        </svg>
-                      </div>
-                      <span className="font-medium text-zinc-900 dark:text-zinc-100">{s.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5 text-zinc-600 dark:text-zinc-400 max-w-[200px] truncate">
-                    {s.address || (s.latitude && s.longitude ? `${s.latitude.toFixed(4)}, ${s.longitude.toFixed(4)}` : "No location")}
-                  </td>
-                  <td className="px-5 py-3.5 text-zinc-600 dark:text-zinc-400">{s.geofence_radius_m}m</td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-zinc-600 dark:text-zinc-400">{s.assignment_count}</span>
-                      {canAssignRep && (
-                        <button
-                          type="button"
-                          onClick={() => setAssignShop(s)}
-                          className="text-xs font-medium text-zinc-500 underline decoration-zinc-300 hover:text-zinc-700 dark:text-zinc-400 dark:decoration-zinc-600 dark:hover:text-zinc-300"
-                        >
-                          {s.assignment_count === 0 ? "Assign rep" : "Add rep"}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <button
-                      type="button"
-                      onClick={() => setViewVisitsShop(s)}
-                      className="text-xs font-medium text-zinc-500 underline decoration-zinc-300 hover:text-zinc-700 dark:text-zinc-400 dark:decoration-zinc-600 dark:hover:text-zinc-300"
-                    >
-                      History
-                    </button>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                      s.is_active
-                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                        : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-                    }`}>
-                      {s.is_active ? "active" : "inactive"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {!shops.length && (
-            <div className="px-5 py-10 text-center text-sm text-zinc-400">
-              {canAddShop ? "No shops yet. Click \"+ Add Shop\" to get started." : "No shops yet."}
-            </div>
-          )}
-        </div>
-      )}
       {viewVisitsShop && (
         <VisitHistoryModal
           shop={viewVisitsShop}
@@ -203,21 +334,11 @@ export default function ShopsPage() {
 }
 
 const inputClass =
-  "w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500";
+  "w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-900 outline-none ring-zinc-500/10 transition-all focus:border-zinc-400 focus:ring-4 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500";
 
 function AddShopModal(props: {
   onClose: () => void;
-  onSubmit: (payload: {
-    name: string;
-    latitude?: number;
-    longitude?: number;
-    geofenceRadiusM: number;
-    address?: string;
-    contactName?: string;
-    contactEmail?: string;
-    contactPhone?: string;
-    notes?: string;
-  }) => Promise<void>;
+  onSubmit: (payload: any) => Promise<void>;
   working: boolean;
 }) {
   const [name, setName] = useState("");
@@ -234,8 +355,8 @@ function AddShopModal(props: {
     e.preventDefault();
     await props.onSubmit({
       name,
-      latitude: latitude ? Number(latitude) : undefined,
-      longitude: longitude ? Number(longitude) : undefined,
+      latitude: latitude ? Number(latitude) : 0,
+      longitude: longitude ? Number(longitude) : 0,
       geofenceRadiusM: Number(geofenceRadiusM),
       address: address || undefined,
       contactName: contactName || undefined,
@@ -247,167 +368,69 @@ function AddShopModal(props: {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-4"
-      onClick={props.onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="add-shop-title"
-    >
-      <div
-        className="w-full max-w-2xl rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 id="add-shop-title" className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-          Add New Shop
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/60 p-4 backdrop-blur-sm" onClick={props.onClose}>
+      <div className="w-full max-w-2xl rounded-[32px] border border-zinc-200 bg-white p-8 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-8 flex items-center justify-between">
+            <h2 className="text-xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Add New Shop</h2>
+            <button onClick={props.onClose} className="rounded-full bg-zinc-50 p-2 text-zinc-400 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div className="space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Basic Info</h3>
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Basic Info</h3>
               <div>
-                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Shop Name *</label>
+                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-zinc-400">Shop Name *</label>
                 <input required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="e.g. Acme Stores Central" />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Address</label>
+                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-zinc-400">Address</label>
                 <input value={address} onChange={(e) => setAddress(e.target.value)} className={inputClass} placeholder="Physical address" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Latitude</label>
-                  <input type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} className={inputClass} placeholder="Optional" />
+                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-zinc-400">Latitude</label>
+                  <input type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} className={inputClass} placeholder="Lat" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Longitude</label>
-                  <input type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} className={inputClass} placeholder="Optional" />
+                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-zinc-400">Longitude</label>
+                  <input type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} className={inputClass} placeholder="Lng" />
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Geofence radius (m)</label>
+                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-zinc-400">Geofence radius (m)</label>
                 <input required type="number" min={1} value={geofenceRadiusM} onChange={(e) => setGeofenceRadiusM(e.target.value)} className={inputClass} />
               </div>
             </div>
 
             <div className="space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Contact Details</h3>
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Contact Details</h3>
               <div>
-                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Contact Person</label>
+                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-zinc-400">Contact Person</label>
                 <input value={contactName} onChange={(e) => setContactName(e.target.value)} className={inputClass} placeholder="Manager name" />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Phone Number</label>
+                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-zinc-400">Phone</label>
                 <input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} className={inputClass} placeholder="Contact number" />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Email Address</label>
+                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-zinc-400">Email</label>
                 <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} className={inputClass} placeholder="Email" />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Internal Notes</label>
+                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-zinc-400">Internal Notes</label>
                 <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={`${inputClass} h-[106px] resize-none`} placeholder="Any extra details..." />
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800">
-            <button type="button" onClick={props.onClose} className="rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800">
+          <div className="flex justify-end gap-3 pt-6 border-t border-zinc-100 dark:border-zinc-800">
+            <button type="button" onClick={props.onClose} className="rounded-2xl border border-zinc-200 px-6 py-4 text-xs font-bold uppercase tracking-widest text-zinc-600 transition-all hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/60">
               Cancel
             </button>
-            <button type="submit" disabled={props.working} className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">
+            <button type="submit" disabled={props.working} className="rounded-2xl bg-[#f4a261] px-10 py-4 text-xs font-bold uppercase tracking-widest text-white shadow-lg shadow-[#f4a261]/20 transition-all hover:brightness-110 disabled:opacity-50">
               {props.working ? "Adding…" : "Add Shop"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function AssignRepModal(props: {
-  shop: Shop;
-  reps: Rep[];
-  onClose: () => void;
-  onSuccess: () => void;
-  toast: { success: (msg: string) => void; error: (msg: string) => void };
-}) {
-  const [repId, setRepId] = useState("");
-  const [isPrimary, setIsPrimary] = useState(false);
-  const [working, setWorking] = useState(false);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!repId) {
-      props.toast.error("Select a rep");
-      return;
-    }
-    setWorking(true);
-    const res = await fetch("/api/manager/shop-assignments", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        shopId: props.shop.id,
-        repCompanyUserId: repId,
-        isPrimary,
-      }),
-    });
-    const data = (await res.json()) as { ok: boolean; error?: string };
-    setWorking(false);
-    if (!res.ok || !data.ok) {
-      props.toast.error(data.error ?? "Could not assign rep");
-      return;
-    }
-    props.toast.success("Rep assigned.");
-    props.onSuccess();
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-4"
-      onClick={props.onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="assign-rep-title"
-    >
-      <div
-        className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 id="assign-rep-title" className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-          Assign rep to {props.shop.name}
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Rep</label>
-            <select
-              required
-              value={repId}
-              onChange={(e) => setRepId(e.target.value)}
-              className={inputClass}
-            >
-              <option value="">Select rep</option>
-              {props.reps.map((r) => (
-                <option key={r.company_user_id} value={r.company_user_id}>
-                  {r.full_name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={isPrimary}
-              onChange={(e) => setIsPrimary(e.target.checked)}
-              className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800"
-            />
-            <span className="text-sm text-zinc-600 dark:text-zinc-400">Primary rep for this shop</span>
-          </label>
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={props.onClose} className="rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800">
-              Cancel
-            </button>
-            <button type="submit" disabled={working} className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">
-              {working ? "Assigning…" : "Assign"}
             </button>
           </div>
         </form>
@@ -431,58 +454,59 @@ function VisitHistoryModal({ shop, onClose }: { shop: Shop; onClose: () => void 
   }, [shop.id]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-zinc-900/40" onClick={onClose} />
-      <div className="relative flex max-h-[80vh] w-full max-w-2xl flex-col rounded-xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="flex items-center justify-between border-b border-zinc-100 p-5 dark:border-zinc-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="absolute inset-0 bg-zinc-900/60" onClick={onClose} />
+      <div className="relative flex max-h-[80vh] w-full max-w-2xl flex-col rounded-[32px] border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-900 overflow-hidden">
+        <div className="flex items-center justify-between border-b border-zinc-50 p-8 dark:border-zinc-800">
           <div>
-            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Shop Visit History</h3>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">{shop.name}</p>
+            <h3 className="text-xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Visit History</h3>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 mt-1">{shop.name}</p>
           </div>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
-            <span className="text-2xl">×</span>
+          <button onClick={onClose} className="rounded-full bg-zinc-50 p-2 text-zinc-400 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex-1 overflow-y-auto p-8">
           {loading ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-20 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800" />
+                <div key={i} className="h-24 animate-pulse rounded-2xl bg-zinc-50 dark:bg-zinc-800/40" />
               ))}
             </div>
           ) : visits.length === 0 ? (
-            <div className="py-12 text-center text-sm text-zinc-400">
-              No visit records found for this shop.
+            <div className="py-12 text-center">
+              <p className="text-sm font-bold text-zinc-300 dark:text-zinc-600 uppercase tracking-widest">No visit records found</p>
             </div>
           ) : (
             <div className="space-y-4">
               {visits.map((v) => {
                 const start = new Date(v.started_at);
                 const end = v.ended_at ? new Date(v.ended_at) : null;
-                const duration = end ? Math.round((end.getTime() - start.getTime()) / 60000) : null;
-
                 return (
-                  <div key={v.id} className="rounded-lg border border-zinc-100 bg-zinc-50/50 p-4 dark:border-zinc-800 dark:bg-zinc-800/50">
+                  <div key={v.id} className="rounded-[24px] border border-zinc-100 bg-zinc-50/20 p-6 dark:border-zinc-800/60 dark:bg-zinc-800/20">
                     <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="font-semibold text-zinc-900 dark:text-zinc-100">{v.rep_name}</h4>
-                        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
-                          <span>📅 {start.toLocaleDateString()}</span>
-                          <span>🕒 {start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – {end ? end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "In progress"}</span>
-                          {duration !== null && (
-                            <span className="font-medium text-zinc-600 dark:text-zinc-300">⏱️ {duration} mins</span>
-                          )}
-                        </div>
+                      <div className="flex items-center gap-4">
+                         <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center text-[10px] font-black text-zinc-400 dark:bg-zinc-800">
+                            {initials(v.rep_name)}
+                         </div>
+                         <div>
+                            <h4 className="text-sm font-black text-zinc-900 dark:text-zinc-100">{v.rep_name}</h4>
+                            <div className="mt-1 flex gap-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                                <span>{start.toLocaleDateString()}</span>
+                                <span>{start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} — {end ? end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Active"}</span>
+                            </div>
+                         </div>
                       </div>
                       {!v.ended_at && (
-                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
-                          Active
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-[8px] font-black uppercase tracking-widest text-emerald-600">
+                          <span className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
+                          Live
                         </span>
                       )}
                     </div>
                     {v.notes && (
-                      <div className="mt-3 rounded border-l-2 border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-300">
+                      <div className="mt-4 rounded-xl bg-white px-4 py-3 text-xs font-medium text-zinc-500 border border-zinc-50 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400">
                         {v.notes}
                       </div>
                     )}
@@ -493,10 +517,10 @@ function VisitHistoryModal({ shop, onClose }: { shop: Shop; onClose: () => void 
           )}
         </div>
 
-        <div className="border-t border-zinc-100 p-4 dark:border-zinc-800 text-right">
+        <div className="p-8 border-t border-zinc-50 dark:border-zinc-800">
           <button
             onClick={onClose}
-            className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            className="w-full rounded-2xl bg-zinc-900 py-4 text-xs font-bold uppercase tracking-widest text-white transition-all hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
           >
             Close
           </button>

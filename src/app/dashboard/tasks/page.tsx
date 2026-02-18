@@ -1,585 +1,317 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState, useMemo } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import { useSession } from "../_lib/session-context";
 import { useToast } from "../_lib/toast-context";
-
-type Task = {
-  id: string;
-  rep_company_user_id: string;
-  rep_name: string;
-  title: string;
-  description: string | null;
-  status: "pending" | "completed" | "cancelled";
-  due_at: string | null;
-  completed_at: string | null;
-  lead_id: string | null;
-  shop_id: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-type Staff = { company_user_id: string; full_name: string; role: string; status: string };
-type Shop = { id: string; name: string };
-type Lead = { id: string; name: string };
+import type { Task, TaskListResponse, Shop, ShopListResponse, Lead, LeadListResponse, Staff, StaffListResponse } from "../_lib/types";
+import Link from "next/link";
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  pending: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   completed: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-  cancelled: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
+  overdue: "bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
 };
-
-const inputClass =
-  "w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500";
-const selectClass =
-  "w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500";
-
-function formatDate(s: string | null): string {
-  if (!s) return "—";
-  const d = new Date(s);
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function toISODateTimeLocal(s: string | null): string {
-  if (!s) return "";
-  const d = new Date(s);
-  const pad = (n: number) => n.toString().padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 export default function TasksPage() {
   const session = useSession();
   const toast = useToast();
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [staff, setStaff] = useState<Staff[]>([]);
-  const [shops, setShops] = useState<Shop[]>([]);
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [working, setWorking] = useState(false);
-  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [tab, setTab] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [filterStatus, setFilterStatus] = useState("");
-  const [filterRep, setFilterRep] = useState("");
+  const [working, setWorking] = useState(false);
+  const [repFilter, setRepFilter] = useState<string>("all");
 
-  const canAssign = session.user.role === "boss" || session.user.role === "manager";
-  const reps = useMemo(
-    () => staff.filter((s) => s.role === "rep" && s.status === "active"),
-    [staff]
-  );
+  const { data: tasksData, mutate } = useSWR<TaskListResponse>("/api/manager/tasks", fetcher);
+  const { data: shopsData } = useSWR<ShopListResponse>("/api/manager/shops", fetcher);
+  const { data: leadsData } = useSWR<LeadListResponse>("/api/manager/leads", fetcher);
+  const { data: staffData } = useSWR<StaffListResponse>("/api/manager/staff", fetcher);
 
-  async function loadTasks() {
-    const params = new URLSearchParams();
-    if (filterStatus) params.set("status", filterStatus);
-    if (filterRep && canAssign) params.set("rep", filterRep);
-    const res = await fetch(`/api/manager/tasks?${params}`);
-    const data = (await res.json()) as { ok: boolean; tasks?: Task[]; error?: string };
-    if (res.ok && data.ok) setTasks(data.tasks ?? []);
-    else toast.error(data.error ?? "Failed to load tasks");
-  }
+  const tasks = tasksData?.tasks ?? [];
+  const shops = shopsData?.shops ?? [];
+  const leads = leadsData?.leads ?? [];
+  const reps = staffData?.staff?.filter(s => s.role === "rep") ?? [];
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const tasksRes = await fetch("/api/manager/tasks");
-      const tasksData = (await tasksRes.json()) as { ok: boolean; tasks?: Task[]; error?: string };
-      if (cancelled) return;
-      if (tasksRes.ok && tasksData.ok) setTasks(tasksData.tasks ?? []);
-
-      const [shopsRes, leadsRes] = await Promise.all([
-        fetch("/api/manager/shops"),
-        fetch("/api/manager/leads"),
-      ]);
-      const shopsData = (await shopsRes.json()) as { ok: boolean; shops?: Shop[] };
-      const leadsData = (await leadsRes.json()) as { ok: boolean; leads?: Lead[] };
-      if (cancelled) return;
-      setShops(shopsData.shops ?? []);
-      setLeads(leadsData.leads ?? []);
-
-      if (canAssign) {
-        const staffRes = await fetch("/api/manager/staff");
-        const staffData = (await staffRes.json()) as { ok: boolean; staff?: Staff[] };
-        if (cancelled) return;
-        setStaff(staffData.staff ?? []);
-      }
-      setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [canAssign]);
-
-  useEffect(() => {
-    if (!loading) loadTasks();
-  }, [filterStatus, filterRep]);
-
-  async function onCreate(payload: {
-    repCompanyUserId: string;
-    title: string;
-    description?: string;
-    dueAt?: string;
-    leadId?: string;
-    shopId?: string;
-  }) {
-    setWorking(true);
-    const body: Record<string, unknown> = {
-      repCompanyUserId: payload.repCompanyUserId,
-      title: payload.title,
-      description: payload.description || undefined,
-      leadId: payload.leadId || undefined,
-      shopId: payload.shopId || undefined,
-    };
-    if (payload.dueAt) {
-      body.dueAt = new Date(payload.dueAt).toISOString();
-    }
-    const res = await fetch("/api/manager/tasks", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((t: Task) => {
+      const matchSearch = t.title.toLowerCase().includes(search.toLowerCase()) || 
+                          t.description.toLowerCase().includes(search.toLowerCase());
+      const matchTab = tab === "all" || t.status === tab;
+      const matchRep = repFilter === "all" || t.rep_company_user_id === repFilter;
+      return matchSearch && matchTab && matchRep;
     });
-    const data = (await res.json()) as { ok: boolean; error?: string };
-    setWorking(false);
-    if (!res.ok || !data.ok) {
-      toast.error(data.error ?? "Could not create task");
-      return;
-    }
-    toast.success("Task assigned.");
-    setAddModalOpen(false);
-    await loadTasks();
-  }
+  }, [tasks, search, tab, repFilter]);
 
-  async function onUpdate(taskId: string, payload: { status?: string; dueAt?: string | null; title?: string; description?: string | null }) {
+  const stats = useMemo(() => ({
+    total: tasks.length,
+    pending: tasks.filter((t: Task) => t.status === "pending").length,
+    completed: tasks.filter((t: Task) => t.status === "completed").length,
+  }), [tasks]);
+
+  async function handleSave(payload: any) {
     setWorking(true);
-    const body: Record<string, unknown> = {};
-    if (payload.status !== undefined) body.status = payload.status;
-    if (payload.title !== undefined) body.title = payload.title;
-    if (payload.description !== undefined) body.description = payload.description;
-    if (payload.dueAt !== undefined) {
-      body.dueAt = payload.dueAt ? new Date(payload.dueAt).toISOString() : null;
-    }
-    const res = await fetch(`/api/manager/tasks/${taskId}`, {
-      method: "PATCH",
+    const url = editingTask ? `/api/manager/tasks/${editingTask.id}` : "/api/manager/tasks";
+    const method = editingTask ? "PATCH" : "POST";
+    const res = await fetch(url, {
+      method,
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     });
-    const data = (await res.json()) as { ok: boolean; error?: string };
+    const data = await res.json();
     setWorking(false);
-    if (!res.ok || !data.ok) {
-      toast.error(data.error ?? "Could not update task");
-      return;
+    if (data.ok) {
+        toast.success(editingTask ? "Directive updated." : "New directive deployed.");
+        setShowModal(false);
+        setEditingTask(null);
+        mutate();
+    } else {
+        toast.error(data.error || "Deployment failed");
     }
-    toast.success("Task updated.");
-    setEditingTask(null);
-    await loadTasks();
   }
 
-  const shopNames = useMemo(() => {
-    const m = new Map<string, string>();
-    shops.forEach((s) => m.set(s.id, s.name));
-    return m;
-  }, [shops]);
-  const leadNames = useMemo(() => {
-    const m = new Map<string, string>();
-    leads.forEach((l) => m.set(l.id, l.name));
-    return m;
-  }, [leads]);
+  async function onMarkComplete(t: Task) {
+    const res = await fetch(`/api/manager/tasks/${t.id}/complete`, { method: "POST" });
+    const data = await res.json();
+    if (data.ok) {
+        toast.success("Directive completed.");
+        mutate();
+    } else {
+        toast.error(data.error || "Update failed");
+    }
+  }
 
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">Tasks</h1>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            {canAssign ? "Assign and track tasks for your reps." : "View and manage your assigned tasks."}
-          </p>
+    <div className="space-y-10">
+      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#f4a261]">
+            <Link href="/dashboard" className="hover:underline">CONSOLE</Link>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6"/></svg>
+            <span className="text-zinc-300">FIELD DIRECTIVES</span>
+          </div>
+          <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Task Management</h1>
         </div>
-        {canAssign && (
-          <button
-            type="button"
-            onClick={() => setAddModalOpen(true)}
-            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            + Assign Task
-          </button>
-        )}
+        <button 
+          onClick={() => { setEditingTask(null); setShowModal(true); }}
+          className="flex h-14 items-center gap-2 rounded-2xl bg-[#f4a261] px-8 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/20 transition-all hover:brightness-110"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Deploy Directive
+        </button>
       </div>
 
-      {addModalOpen && canAssign && (
-        <AssignTaskModal
-          reps={reps}
-          shops={shops}
-          leads={leads}
-          working={working}
-          onClose={() => setAddModalOpen(false)}
-          onSubmit={onCreate}
-        />
-      )}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <StatCardSmall label="Open Directives" value={stats.pending} icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>} />
+        <StatCardSmall label="Resolved Today" value={stats.completed} icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>} />
+        <StatCardSmall label="Directives Total" value={stats.total} icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>} />
+      </div>
 
-      {editingTask && (
-        <EditTaskModal
-          task={editingTask}
-          working={working}
-          onClose={() => setEditingTask(null)}
-          onSave={(payload) => onUpdate(editingTask.id, payload)}
-        />
-      )}
-
-      {canAssign && (
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className={selectClass}
-          >
-            <option value="">All statuses</option>
-            <option value="pending">Pending</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-          <select
-            value={filterRep}
-            onChange={(e) => setFilterRep(e.target.value)}
-            className={selectClass}
-          >
-            <option value="">All reps</option>
-            {reps.map((r) => (
-              <option key={r.company_user_id} value={r.company_user_id}>
-                {r.full_name}
-              </option>
-            ))}
-          </select>
+      <div className="rounded-[40px] border border-zinc-100 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+           <div className="flex items-center gap-1 rounded-2xl bg-zinc-50 p-1 dark:bg-zinc-800/60">
+              {["all", "pending", "completed", "overdue"].map(t => (
+                <button 
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={`rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${tab === t ? "bg-white text-[#f4a261] shadow-sm dark:bg-zinc-700" : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"}`}
+                >
+                  {t}
+                </button>
+              ))}
+           </div>
+           
+           <div className="flex items-center gap-3">
+               <select 
+                 value={repFilter} 
+                 onChange={e => setRepFilter(e.target.value)}
+                 className="h-11 rounded-xl border border-zinc-50 bg-zinc-50/50 px-4 text-[11px] font-bold text-zinc-500 outline-none transition-all focus:border-zinc-200 dark:border-zinc-800 dark:bg-zinc-800/40"
+               >
+                  <option value="all">All Agents</option>
+                  {reps.map(r => <option key={r.company_user_id} value={r.company_user_id}>{r.full_name}</option>)}
+               </select>
+               <div className="relative">
+                  <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input 
+                    type="text" 
+                    placeholder="Search directives..." 
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    className="h-11 w-full rounded-xl border border-zinc-50 bg-zinc-50/50 pl-11 pr-4 text-[11px] font-bold outline-none transition-all focus:border-zinc-200 dark:border-zinc-800 dark:bg-zinc-800/40 md:w-64"
+                  />
+               </div>
+           </div>
         </div>
-      )}
 
-      {loading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-xl bg-zinc-200/60 dark:bg-zinc-800/60" />
-          ))}
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-          <table className="w-full min-w-[640px] text-left text-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Task</th>
-                {canAssign && (
-                  <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Assigned to</th>
-                )}
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Due</th>
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Link</th>
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Status</th>
-                <th className="px-5 py-3" />
+              <tr className="border-b border-zinc-50 dark:border-zinc-800/60">
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">Directive Title</th>
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">Assigned Agent</th>
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">Linked Asset</th>
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">Directive Status</th>
+                <th className="pb-5 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400">Deployment</th>
               </tr>
             </thead>
-            <tbody>
-              {tasks.map((t) => (
-                <tr key={t.id} className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60">
-                  <td className="px-5 py-3.5">
-                    <p className="font-medium text-zinc-900 dark:text-zinc-100">{t.title}</p>
-                    {t.description && (
-                      <p className="mt-0.5 line-clamp-2 text-xs text-zinc-500 dark:text-zinc-400">{t.description}</p>
-                    )}
+            <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/40">
+              {filteredTasks.map((t) => (
+                <tr key={t.id} className="group hover:bg-zinc-50/30 dark:hover:bg-zinc-800/20">
+                  <td className="py-6">
+                    <div className="max-w-xs">
+                      <p className="text-[13px] font-black text-zinc-900 dark:text-zinc-100">{t.title}</p>
+                      <p className="mt-0.5 truncate text-[11px] font-medium text-zinc-400">{t.description}</p>
+                    </div>
                   </td>
-                  {canAssign && (
-                    <td className="px-5 py-3.5 text-zinc-600 dark:text-zinc-400">{t.rep_name}</td>
-                  )}
-                  <td className="px-5 py-3.5 text-zinc-600 dark:text-zinc-400">{formatDate(t.due_at)}</td>
-                  <td className="px-5 py-3.5 text-zinc-600 dark:text-zinc-400">
-                    {t.shop_id && shopNames.get(t.shop_id) ? (
-                      <span title={t.shop_id}>{shopNames.get(t.shop_id)}</span>
-                    ) : t.lead_id && leadNames.get(t.lead_id) ? (
-                      <span title={t.lead_id}>{leadNames.get(t.lead_id)}</span>
-                    ) : (
-                      "—"
-                    )}
+                  <td className="py-6">
+                    <p className="text-[12px] font-bold text-zinc-700 dark:text-zinc-300">{t.rep_name || "Unassigned"}</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mt-0.5">Role: Field Agent</p>
                   </td>
-                  <td className="px-5 py-3.5">
-                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_COLORS[t.status] ?? ""}`}>
+                  <td className="py-6">
+                    <p className="text-[12px] font-black text-zinc-900 dark:text-zinc-100">{t.shop_name || t.lead_name || "Global"}</p>
+                    <p className="text-[10px] font-bold text-[#f4a261] uppercase tracking-widest mt-0.5">{t.shop_name ? "Shop Asset" : t.lead_name ? "Prospect" : "General"}</p>
+                  </td>
+                  <td className="py-6">
+                    <span className={`inline-flex rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-widest ${STATUS_COLORS[t.status] || "bg-zinc-100 text-zinc-600"}`}>
                       {t.status}
                     </span>
                   </td>
-                  <td className="px-5 py-3.5 text-right">
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                      {t.status === "pending" && (
-                        <button
-                          type="button"
-                          onClick={() => onUpdate(t.id, { status: "completed" })}
-                          disabled={working}
-                          className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-800/50 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/30"
+                  <td className="py-6 text-right">
+                    <div className="flex items-center justify-end gap-3">
+                        {t.status === "pending" && (
+                            <button 
+                                onClick={() => onMarkComplete(t)}
+                                className="text-[10px] font-black uppercase tracking-widest text-[#f4a261] hover:underline"
+                            >
+                                Resolve
+                            </button>
+                        )}
+                        <button 
+                            onClick={() => { setEditingTask(t); setShowModal(true); }}
+                            className="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
                         >
-                          Complete
+                            Modify
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setEditingTask(t)}
-                        disabled={working}
-                        className="rounded-md border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
-                      >
-                        Edit
-                      </button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {!tasks.length && (
-            <div className="px-5 py-10 text-center text-sm text-zinc-400">
-              {canAssign
-                ? "No tasks yet. Click \"+ Assign Task\" to create one."
-                : "No tasks assigned to you."}
-            </div>
-          )}
         </div>
+      </div>
+
+      {showModal && (
+        <TaskModal 
+            task={editingTask} 
+            shops={shops} 
+            leads={leads} 
+            reps={reps} 
+            working={working}
+            onClose={() => { setShowModal(false); setEditingTask(null); }}
+            onSubmit={handleSave}
+        />
       )}
     </div>
   );
 }
 
-function ModalShell(props: { title: string; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-4"
-      onClick={props.onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
-    >
-      <div
-        className="w-full max-w-lg rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 id="modal-title" className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-          {props.title}
-        </h2>
-        {props.children}
-      </div>
-    </div>
-  );
+function StatCardSmall({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
+    return (
+        <div className="flex items-center justify-between rounded-3xl border border-zinc-100 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{label}</p>
+                <p className="mt-1 text-2xl font-black text-zinc-900 dark:text-zinc-100">{value}</p>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-[#f4a261] dark:bg-orange-900/20">
+                {icon}
+            </div>
+        </div>
+    );
 }
 
-function AssignTaskModal(props: {
-  reps: Staff[];
-  shops: Shop[];
-  leads: Lead[];
-  working: boolean;
-  onClose: () => void;
-  onSubmit: (payload: {
-    repCompanyUserId: string;
-    title: string;
-    description?: string;
-    dueAt?: string;
-    leadId?: string;
-    shopId?: string;
-  }) => Promise<void>;
+function TaskModal({ task, shops, leads, reps, working, onClose, onSubmit }: { 
+    task?: Task | null; 
+    shops: Shop[]; 
+    leads: Lead[]; 
+    reps: Staff[]; 
+    working: boolean; 
+    onClose: () => void; 
+    onSubmit: (payload: any) => Promise<void>; 
 }) {
-  const [repId, setRepId] = useState("");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [dueAt, setDueAt] = useState("");
-  const [leadId, setLeadId] = useState("");
-  const [shopId, setShopId] = useState("");
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!repId || !title.trim()) {
-      return;
-    }
-    await props.onSubmit({
-      repCompanyUserId: repId,
-      title: title.trim(),
-      description: description.trim() || undefined,
-      dueAt: dueAt || undefined,
-      leadId: leadId || undefined,
-      shopId: shopId || undefined,
+    const [formData, setFormData] = useState({
+        title: task?.title || "",
+        description: task?.description || "",
+        repCompanyUserId: task?.rep_company_user_id || "",
+        shopId: task?.shop_id || "",
+        leadId: task?.lead_id || "",
+        deadline: task?.deadline ? new Date(task.deadline).toISOString().slice(0, 16) : "",
+        status: task?.status || "pending"
     });
-    setRepId("");
-    setTitle("");
-    setDescription("");
-    setDueAt("");
-    setLeadId("");
-    setShopId("");
-  }
 
-  return (
-    <ModalShell title="Assign Task" onClose={props.onClose}>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
-            Assign to rep <span className="text-red-500">*</span>
-          </label>
-          <select
-            required
-            value={repId}
-            onChange={(e) => setRepId(e.target.value)}
-            className={selectClass}
-          >
-            <option value="">Select rep</option>
-            {props.reps.map((r) => (
-              <option key={r.company_user_id} value={r.company_user_id}>
-                {r.full_name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
-            Title <span className="text-red-500">*</span>
-          </label>
-          <input
-            required
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className={inputClass}
-            placeholder="e.g. Follow up with ABC Store"
-            maxLength={200}
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Description</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            className={inputClass}
-            placeholder="Optional details"
-            maxLength={2000}
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Due date</label>
-          <input
-            type="datetime-local"
-            value={dueAt}
-            onChange={(e) => setDueAt(e.target.value)}
-            className={inputClass}
-          />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Link to shop</label>
-            <select value={shopId} onChange={(e) => setShopId(e.target.value)} className={selectClass}>
-              <option value="">Optional</option>
-              {props.shops.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Link to lead</label>
-            <select value={leadId} onChange={(e) => setLeadId(e.target.value)} className={selectClass}>
-              <option value="">Optional</option>
-              {props.leads.map((l) => (
-                <option key={l.id} value={l.id}>{l.name}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={props.onClose}
-            className="rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={props.working}
-            className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            {props.working ? "Assigning…" : "Assign Task"}
-          </button>
-        </div>
-      </form>
-    </ModalShell>
-  );
-}
+    const inputClass = "w-full rounded-xl border border-zinc-100 bg-zinc-50/50 px-4 py-3 text-[13px] font-medium text-zinc-900 outline-none transition-all focus:border-zinc-200 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-100";
 
-function EditTaskModal(props: {
-  task: Task;
-  working: boolean;
-  onClose: () => void;
-  onSave: (payload: { status?: string; dueAt?: string | null; title?: string; description?: string | null }) => Promise<void>;
-}) {
-  const t = props.task;
-  const [title, setTitle] = useState(t.title);
-  const [description, setDescription] = useState(t.description ?? "");
-  const [dueAt, setDueAt] = useState(toISODateTimeLocal(t.due_at));
-  const [status, setStatus] = useState(t.status);
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/20 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-2xl overflow-hidden rounded-[40px] border border-zinc-100 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="flex items-center justify-between border-b border-zinc-50 px-10 py-8 dark:border-zinc-800">
+                    <div>
+                        <h3 className="text-xl font-black text-zinc-900 dark:text-zinc-100">{task ? "Modify Field Directive" : "Deploy Directive"}</h3>
+                        <p className="text-xs font-medium text-zinc-400 uppercase tracking-widest mt-1">Deployment ID #{task?.id.slice(0, 8) || "NEW"}</p>
+                    </div>
+                    <button onClick={onClose} className="rounded-xl border border-zinc-100 p-2 text-zinc-400 hover:bg-zinc-50 dark:border-zinc-800">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                
+                <form onSubmit={e => { e.preventDefault(); onSubmit(formData); }} className="p-10">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                        <div className="col-span-2 space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Directive Header</label>
+                            <input required className={inputClass} placeholder="Deployment Title" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
+                        </div>
+                        <div className="col-span-2 space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Mission Description</label>
+                            <textarea required className={`${inputClass} h-32 resize-none`} placeholder="Deployment Context and Requirements..." value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                        </div>
+                        
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Deployed Agent</label>
+                            <select required className={inputClass} value={formData.repCompanyUserId} onChange={e => setFormData({...formData, repCompanyUserId: e.target.value})}>
+                                <option value="">Select Agent</option>
+                                {reps.map(r => <option key={r.company_user_id} value={r.company_user_id}>{r.full_name}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Deployment Window</label>
+                            <input required type="datetime-local" className={inputClass} value={formData.deadline} onChange={e => setFormData({...formData, deadline: e.target.value})} />
+                        </div>
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    await props.onSave({
-      title: title.trim(),
-      description: description || null,
-      dueAt: dueAt ? new Date(dueAt).toISOString() : null,
-      status,
-    });
-  }
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Shop Asset Link (Optional)</label>
+                            <select className={inputClass} value={formData.shopId} onChange={e => { setFormData({...formData, shopId: e.target.value, leadId: ""}); }}>
+                                <option value="">No Shop Asset</option>
+                                {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Prospect Link (Optional)</label>
+                            <select className={inputClass} value={formData.leadId} onChange={e => { setFormData({...formData, leadId: e.target.value, shopId: ""}); }}>
+                                <option value="">No Prospect</option>
+                                {leads.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                            </select>
+                        </div>
+                    </div>
 
-  return (
-    <ModalShell title="Edit Task" onClose={props.onClose}>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Title</label>
-          <input
-            required
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className={inputClass}
-            maxLength={200}
-          />
+                    <div className="mt-10 flex gap-4">
+                        <button type="button" onClick={onClose} className="h-14 flex-1 rounded-2xl border border-zinc-100 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:bg-zinc-50 dark:border-zinc-800">Cancel</button>
+                        <button disabled={working} className="h-14 flex-1 rounded-2xl bg-[#f4a261] text-[11px] font-black uppercase tracking-widest text-white shadow-xl shadow-orange-500/20">
+                            {working ? "Deploying..." : task ? "Update Directive" : "Launch Mission"}
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Description</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            className={inputClass}
-            maxLength={2000}
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Due date</label>
-          <input
-            type="datetime-local"
-            value={dueAt}
-            onChange={(e) => setDueAt(e.target.value)}
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Status</label>
-          <select value={status} onChange={(e) => setStatus(e.target.value as Task["status"])} className={selectClass}>
-            <option value="pending">Pending</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-        </div>
-        <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={props.onClose}
-            className="rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={props.working}
-            className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            {props.working ? "Saving…" : "Save"}
-          </button>
-        </div>
-      </form>
-    </ModalShell>
-  );
+    );
 }

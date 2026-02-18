@@ -140,9 +140,9 @@ export default function Home() {
             className={`${displaySerif.className} mx-auto mt-8 max-w-[920px] text-[clamp(3.8rem,8vw,8.2rem)] leading-[0.95] tracking-[-0.02em] text-zinc-900 dark:text-zinc-100 animate-in fade-in slide-in-from-bottom-4 duration-700`}
             style={{ animationDelay: "0.2s" }}
           >
-            Field visits,
+            Field Sales,
             <br />
-            leads, and orders.
+            Fully Visible.
           </h1>
           <p className="mx-auto mt-7 max-w-2xl text-[clamp(0.95rem,1.3vw,1.35rem)] leading-[1.5] text-zinc-600 dark:text-zinc-400 animate-in fade-in slide-in-from-bottom-4 duration-700" style={{ animationDelay: "0.3s" }}>
             SalesSuite detects shop arrivals using geofencing, logs visits with time and duration, and lets reps submit orders with totals, straight to back office.

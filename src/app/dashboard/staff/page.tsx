@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
-import type { Staff, StaffCounts, StaffListResponse, Visit, VisitListResponse } from "../_lib/types";
+import type { Staff, StaffCounts, StaffListResponse, Visit, VisitListResponse, AttendanceLog, AttendanceLogListResponse } from "../_lib/types";
 import { useSession } from "../_lib/session-context";
 import { useToast } from "../_lib/toast-context";
 
@@ -60,32 +60,89 @@ function normalizePhoneInput(phone: string): string {
   return phone;
 }
 
+function StatCard({ title, value, trend, trendUp, subValue, icon }: { 
+  title: string; 
+  value: string; 
+  trend?: string; 
+  trendUp?: boolean; 
+  subValue?: string;
+  icon: 'timer' | 'alert' | 'clock';
+}) {
+  const IconMap = {
+    timer: (
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+    ),
+    alert: (
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-600 dark:bg-orange-900/20">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+    ),
+    clock: (
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      </div>
+    )
+  };
+
+  return (
+    <div className="flex items-center justify-between rounded-[24px] border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div>
+        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">{title}</p>
+        <div className="mt-1 flex items-baseline gap-2">
+          <span className="text-4xl font-bold text-zinc-900 dark:text-zinc-100">{value}</span>
+          {subValue && <span className="text-[13px] text-zinc-400">{subValue}</span>}
+        </div>
+        {trend && (
+          <p className={`mt-2 flex items-center gap-1 text-[11px] font-bold ${trendUp ? "text-emerald-500" : "text-orange-500"}`}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={trendUp ? "" : "rotate-180"}>
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+            </svg>
+            {trend}
+          </p>
+        )}
+      </div>
+      {IconMap[icon]}
+    </div>
+  );
+}
+
 export default function StaffPage() {
   const session = useSession();
   const toast = useToast();
   const canManage = session.user.role === "boss" || session.user.role === "manager";
-
-  const [working, setWorking] = useState(false);
   const [tab, setTab] = useState<Tab>("active");
   const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebounce(searchInput.trim(), 300);
   const [roleFilter, setRoleFilter] = useState("");
+
+  // Calculate today's date range (Local)
+  const dateRange = useMemo(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    return { from: start.toISOString(), to: end.toISOString(), dateStr: start.toDateString() };
+  }, []);
+
   const [addDrawerOpen, setAddDrawerOpen] = useState(false);
   const [editStaff, setEditStaff] = useState<Staff | null>(null);
   const [deactivateStaff, setDeactivateStaff] = useState<Staff | null>(null);
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [viewVisitsStaff, setViewVisitsStaff] = useState<Staff | null>(null);
+  const [working, setWorking] = useState(false);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
 
-  const debouncedQ = useDebounce(searchInput.trim(), 300);
+
   const debouncedRole = useDebounce(roleFilter, 0);
 
 
 
   const params = new URLSearchParams();
   params.set("status", tab);
-  if (debouncedQ) params.set("q", debouncedQ);
+  if (debouncedSearch) params.set("q", debouncedSearch);
   if (debouncedRole) params.set("role", debouncedRole);
 
   const { data: staffData, mutate: mutateStaff } = useSWR<StaffListResponse>(
@@ -258,35 +315,81 @@ export default function StaffPage() {
   const totalCurrent = counts.active + counts.invited + counts.inactive;
   const atLimit = totalCurrent >= totalAllowed;
 
+
+  const { data: attendanceData } = useSWR<AttendanceLogListResponse>(
+    `/api/manager/attendance?date_from=${dateRange.from}&date_to=${dateRange.to}`,
+    fetcher,
+    { refreshInterval: 5000 }
+  );
+
+  const logs = attendanceData?.logs ?? [];
+  // Strict frontend filter for today's local date
+  const filteredLogs = logs.filter((l: AttendanceLog) => new Date(l.clock_in_at).toDateString() === dateRange.dateStr);
+
+  // Calc stats
+  const currentlyOnClock = filteredLogs.filter((l: AttendanceLog) => !l.clock_out_at).length;
+  // Let's assume late is after 9:00 AM for now, or just some demo logic
+  const lateArrivals = filteredLogs.filter((l: AttendanceLog) => {
+    const time = new Date(l.clock_in_at).getHours();
+    return time >= 9;
+  }).length;
+
+  const totalMinutesToday = filteredLogs.reduce((acc: number, l: AttendanceLog) => {
+    const start = new Date(l.clock_in_at).getTime();
+    const end = l.clock_out_at ? new Date(l.clock_out_at).getTime() : Date.now();
+    return acc + (end - start) / (1000 * 60);
+  }, 0);
+  const totalHoursStr = (totalMinutesToday / 60).toLocaleString(undefined, { maximumFractionDigits: 1 });
+
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">Staff</h1>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Manage reps and back office users.
-          </p>
-          <p className="mt-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            {totalCurrent} of {totalAllowed} users allowed by your plan (1 manager + {staffLimit} staff).
-            {atLimit && (
-              <span className="ml-1 text-amber-600 dark:text-amber-400">At limit — contact support to add more.</span>
-            )}
-          </p>
-        </div>
-        {canManage && (
-          <button
-            type="button"
-            onClick={() => setAddDrawerOpen(true)}
-            disabled={atLimit}
-            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 disabled:pointer-events-none dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            + Add staff
-          </button>
-        )}
+    <div className="space-y-8">
+      {/* Attendance Stats */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <StatCard
+          title="currently on clock"
+          value={currentlyOnClock.toString()}
+          icon="timer"
+        />
+        <StatCard
+          title="late arrivals"
+          value={lateArrivals.toString().padStart(2, '0')}
+          subValue="After 09:00 AM"
+          icon="alert"
+        />
+        <StatCard
+          title="total hours today"
+          value={`${totalHoursStr.replace('.', ',')}h`}
+          subValue={`Target: ${(counts.active * 8).toLocaleString()} hrs`}
+          icon="clock"
+        />
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-4">
-        <div className="flex rounded-lg border border-zinc-200 bg-zinc-50/50 p-0.5 dark:border-zinc-700 dark:bg-zinc-800/50">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Real-time Attendance Logs</h2>
+        <div className="flex items-center gap-3">
+          <button className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-xs font-medium text-zinc-700 transition-all hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 3H2l8 9v6l4 2V12l8-9z"/></svg>
+            Filters
+          </button>
+          <button className="flex items-center gap-2 rounded-lg bg-[#f4a261] px-4 py-2 text-xs font-medium text-white transition-all hover:brightness-105">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+          {canManage && (
+            <button
+              type="button"
+              onClick={() => setAddDrawerOpen(true)}
+              disabled={atLimit}
+              className="rounded-lg bg-[#f4a261] px-4 py-2 text-xs font-medium text-white shadow-lg shadow-orange-500/10 transition-all hover:brightness-105 disabled:opacity-50"
+            >
+              + Add staff
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex rounded-lg border border-zinc-200 bg-white/50 p-0.5 dark:border-zinc-700 dark:bg-zinc-800/50">
           {(["active", "invited", "inactive"] as const).map((t) => (
             <button
               key={t}
@@ -306,13 +409,13 @@ export default function StaffPage() {
           type="text"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Search by name, email, or phone…"
-          className="w-full max-w-xs rounded-lg border border-zinc-200 bg-white px-3.5 py-2 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
+          placeholder="Search specific employees by name or department..."
+          className="flex-1 min-w-[300px] rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
         />
         <select
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
-          className="rounded-lg border border-zinc-200 bg-white px-3.5 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500"
+          className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500"
         >
           {ROLE_OPTIONS.map((opt) => (
             <option key={opt.value || "all"} value={opt.value}>
@@ -326,114 +429,141 @@ export default function StaffPage() {
             onClick={() => setRoleFilter("")}
             className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-400"
           >
-            Reset filters
+            Reset
           </button>
         )}
       </div>
 
       {loading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-xl bg-zinc-200/60 dark:bg-zinc-800/60" />
+        <div className="space-y-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-20 animate-pulse rounded-2xl bg-white dark:bg-zinc-800/40" />
           ))}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-          <table className="w-full min-w-[640px] text-left text-sm">
+        <div className="overflow-hidden rounded-[24px] border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <table className="w-full text-left text-[11px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
             <thead>
-              <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Name</th>
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Role</th>
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Status</th>
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Contact</th>
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Last login</th>
-                <th className="w-28 px-4 py-3" />
+              <tr className="border-b border-zinc-100 dark:border-zinc-800">
+                <th className="px-8 py-5 font-semibold">REPRESENTATIVE</th>
+                <th className="px-5 py-5 font-semibold">STATUS</th>
+                <th className="px-5 py-5 font-semibold text-center">CLOCK IN</th>
+                <th className="px-5 py-5 font-semibold text-center">CLOCK OUT</th>
+                <th className="px-5 py-5 font-semibold text-center">DURATION</th>
+                <th className="px-8 py-5 text-right font-semibold">ACTIONS</th>
               </tr>
             </thead>
-            <tbody>
-              {staff.map((s) => (
-                <tr key={s.company_user_id} className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60">
-                  <td className="px-5 py-3.5">
-                    <Link href={`/dashboard/staff/${s.company_user_id}`} className="group flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-sm font-semibold text-zinc-600 transition-colors group-hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:group-hover:bg-zinc-700">
-                        {initials(s.full_name)}
+            <tbody className="normal-case tracking-normal">
+              {staff.map((s: Staff) => {
+                const log = filteredLogs.find((l: AttendanceLog) => l.rep_company_user_id === s.company_user_id);
+                const isCurrentlyIn = log && !log.clock_out_at;
+                const isLate = log && new Date(log.clock_in_at).getHours() >= 9;
+
+                const clockIn = log ? new Date(log.clock_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : "--:--";
+                const clockOut = log?.clock_out_at ? new Date(log.clock_out_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : "--:--";
+                
+                let duration = "--:-- hrs";
+                if (log) {
+                  const start = new Date(log.clock_in_at).getTime();
+                  const end = log.clock_out_at ? new Date(log.clock_out_at).getTime() : Date.now();
+                  const diff = Math.floor((end - start) / (1000 * 60));
+                  const h = Math.floor(diff / 60);
+                  const m = diff % 60;
+                  duration = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} hrs`;
+                }
+
+                return (
+                  <tr key={s.company_user_id} className="border-b border-zinc-50 last:border-0 hover:bg-zinc-50/50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/20">
+                    <td className="px-8 py-4">
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-[13px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                            {initials(s.full_name)}
+                          </div>
+                          {isCurrentlyIn && (
+                            <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 dark:border-zinc-900" />
+                          )}
+                        </div>
+                        <Link href={`/dashboard/staff/${s.company_user_id}`} className="group cursor-pointer">
+                          <div className="text-[14px] font-bold text-zinc-900 group-hover:text-[#f4a261] transition-colors dark:text-zinc-100">{s.full_name}</div>
+                          <div className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                             {s.role === "back_office" ? "Back office" : s.role === "boss" ? "Admin" : s.role === "rep" ? "Sales Department" : s.role}
+                          </div>
+                        </Link>
                       </div>
-                      <div>
-                        <div className="font-medium text-zinc-900 group-hover:text-blue-600 dark:text-zinc-100 dark:group-hover:text-blue-400">{s.full_name}</div>
-                        <div className="text-xs text-zinc-500 dark:text-zinc-400">{s.email}</div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="flex flex-col gap-1">
+                        {log ? (
+                          <>
+                            <span className={`inline-flex w-fit rounded-full px-3 py-1 text-[10px] font-bold ${
+                              isCurrentlyIn 
+                                ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400" 
+                                : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                            }`}>
+                              {isCurrentlyIn ? "Currently In" : "Clocked Out"}
+                            </span>
+                            {isLate && (
+                              <span className="inline-flex w-fit rounded-full bg-orange-50 px-3 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-900/20 dark:text-orange-400">
+                                LATE ARRIVAL
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-[11px] text-zinc-400">—</span>
+                        )}
                       </div>
-                    </Link>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                      {s.role === "back_office" ? "Back office" : s.role === "boss" ? "Admin" : s.role}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                        s.status === "active"
-                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                          : s.status === "invited"
-                            ? "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                            : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-                      }`}
-                    >
-                      {s.status}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5 text-zinc-600 dark:text-zinc-400">
-                    {s.phone ? (
-                       <a href={`tel:${s.phone}`} className="hover:underline">{s.phone}</a>
-                    ) : (
-                      <span className="text-zinc-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3.5 text-zinc-500 dark:text-zinc-400">
-                    {formatLastLogin(s.last_login_at)}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    {canManage && (
-                      <div className="flex items-center justify-end gap-1">
+                    </td>
+                    <td className="px-5 py-4 text-center font-medium text-zinc-900 dark:text-zinc-100">
+                      {isLate ? <span className="text-red-500">{clockIn}</span> : clockIn}
+                    </td>
+                    <td className="px-5 py-4 text-center text-zinc-400 dark:text-zinc-500">{clockOut}</td>
+                    <td className="px-5 py-4 text-center font-bold text-zinc-900 dark:text-zinc-100">{duration}</td>
+                    <td className="px-8 py-4 text-right">
+                      <div className="flex items-center justify-end font-medium">
                         <button
                           type="button"
-                          onClick={() => setEditStaff(s)}
-                          className="rounded-md border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                          onClick={() => setMenuOpenId((id) => (id === s.company_user_id ? null : s.company_user_id))}
+                          className="rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-700"
                         >
-                          Edit
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
                         </button>
-                        <div className="relative" ref={menuOpenId === s.company_user_id ? menuRef : null}>
-                          <button
-                            type="button"
-                            onClick={() => setMenuOpenId((id) => (id === s.company_user_id ? null : s.company_user_id))}
-                            className="rounded-md p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-700 dark:hover:text-zinc-300"
-                            aria-label="More actions"
-                            aria-expanded={menuOpenId === s.company_user_id}
-                          >
-                            <span className="text-base leading-none">⋯</span>
-                          </button>
-                        </div>
                       </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-          {!staff.length && (
-            <div className="px-5 py-10 text-center text-sm text-zinc-400">
-              {tab === "active"
-                ? "No active staff. Add someone or check Invited / Inactive."
-                : `No ${tab} staff.`}
+          <div className="flex items-center justify-between border-t border-zinc-100 px-8 py-5 dark:border-zinc-800">
+            <span className="text-[11px] font-bold uppercase text-zinc-400">
+              SHOWING 1-{staff.length} OF {counts[tab] ?? 0} EMPLOYEES
+            </span>
+            <div className="flex gap-1.5">
+              {[1, 2, 3].map(p => (
+                <button
+                  key={p}
+                  className={`h-7 w-7 rounded-lg text-[11px] font-bold border transition-all ${
+                    p === 1 
+                      ? "bg-[#f4a261] border-[#f4a261] text-white" 
+                      : "bg-white border-zinc-200 text-zinc-500 hover:border-zinc-300 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-400"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+              <button className="h-7 w-7 rounded-lg border border-zinc-200 flex items-center justify-center text-zinc-400 dark:border-zinc-700">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
             </div>
-          )}
+          </div>
         </div>
       )}
 
       {menuOpenId && dropdownPosition && typeof document !== "undefined" &&
         createPortal(
           (() => {
-            const s = staff.find((x) => x.company_user_id === menuOpenId);
+            const s = staff.find((x: Staff) => x.company_user_id === menuOpenId);
             if (!s) return null;
             return (
               <div

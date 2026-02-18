@@ -15,7 +15,7 @@ const navItems = [
   { label: "Products", href: "/dashboard/products", icon: PackageIcon },
   { label: "Staff", href: "/dashboard/staff", icon: UsersIcon },
   { label: "Shops", href: "/dashboard/shops", icon: StoreIcon },
-  { label: "Assignments", href: "/dashboard/assignments", icon: LinkIcon },
+  { label: "Shop Assignments", href: "/dashboard/assignments", icon: LinkIcon },
   { label: "Profile", href: "/dashboard/profile", icon: UserIcon },
 ];
 
@@ -72,79 +72,64 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
       {/* Sidebar: drawer on mobile, static on lg+ */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[260px] max-w-[85vw] flex-col border-r border-zinc-200 bg-white shadow-xl transition-transform duration-200 ease-out dark:border-zinc-800 dark:bg-zinc-900 lg:static lg:max-w-none lg:shrink-0 lg:shadow-none ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        className={`fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col border-r border-zinc-100 bg-white shadow-xl transition-transform duration-300 ease-in-out dark:border-zinc-800 dark:bg-zinc-900 lg:static lg:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex h-16 items-center justify-between border-b border-zinc-200 px-4 lg:h-24 lg:gap-2.5 lg:px-5 dark:border-zinc-800">
+        <div className="flex h-20 items-center justify-between px-6 lg:h-32 lg:px-8">
           <div className="flex items-center gap-2">
-            <Image src="/logo.svg" alt="SalesSuite" width={96} height={96} className="h-9 w-auto dark:hidden lg:h-24 lg:w-24" />
-            <Image src="/logo-dark.svg" alt="SalesSuite" width={96} height={96} className="hidden h-9 w-auto dark:block lg:h-24 lg:w-24" />
+            <Image src="/logo.svg" alt="SalesSuite" width={120} height={40} className="h-10 w-auto dark:hidden" />
+            <Image src="/logo-dark.svg" alt="SalesSuite" width={120} height={40} className="hidden h-10 w-auto dark:block" />
           </div>
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-            {roleLabel}
-          </span>
           <button
             type="button"
             onClick={() => setSidebarOpen(false)}
-            className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 lg:hidden dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-            aria-label="Close menu"
+            className="rounded-xl p-2 text-zinc-400 hover:bg-zinc-50 lg:hidden dark:hover:bg-zinc-800"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
 
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 space-y-1 px-2 pb-8">
           {navItems.map((item) => {
-            const active =
-              item.href === "/dashboard"
-                ? pathname === "/dashboard"
-                : pathname.startsWith(item.href);
+            const active = item.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors min-h-[44px] ${
+                className={`relative flex items-center gap-4 rounded-2xl px-6 py-4 text-[14px] font-bold transition-all ${
                   active
-                    ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
-                    : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-200"
+                    ? "bg-[#f4a261]/5 text-[#f4a261] dark:bg-[#f4a261]/10"
+                    : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                 }`}
               >
-                <item.icon active={active} />
+                {active && <div className="absolute left-0 top-1/2 h-8 w-1.5 -translate-y-1/2 rounded-r-full bg-[#f4a261]" />}
+                <div className={`transition-colors ${active ? "text-[#f4a261]" : "text-zinc-400"}`}>
+                    <item.icon active={active} />
+                </div>
                 {item.label}
               </Link>
             );
           })}
         </nav>
 
-        <div className="border-t border-zinc-200 px-4 py-4 dark:border-zinc-800">
-          <div className="flex items-center gap-3 min-h-[44px]">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-xs font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">
-              {session.user.fullName.charAt(0).toUpperCase()}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-medium text-zinc-900 dark:text-zinc-100">
-                {session.user.fullName}
-              </p>
-              <p className="truncate text-[11px] text-zinc-500 dark:text-zinc-400">
-                {session.company.name}
-              </p>
+        <div className="border-t border-zinc-100 p-6 dark:border-zinc-800">
+            <div className="flex items-center gap-3 mb-6">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-zinc-50 text-[12px] font-black text-zinc-400 shadow-sm dark:bg-zinc-800 dark:text-zinc-500">
+                    {session.user.fullName.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-black text-zinc-900 dark:text-zinc-100">{session.user.fullName}</p>
+                    <p className="truncate text-[10px] font-bold uppercase tracking-widest text-[#f4a261]">{roleLabel}</p>
+                </div>
             </div>
             <button
-              onClick={onLogout}
-              title="Logout"
-              className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300 min-h-[44px] min-w-[44px]"
+                onClick={onLogout}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-zinc-100 bg-white text-[11px] font-black uppercase tracking-widest text-zinc-400 transition-all hover:bg-zinc-50 hover:text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500 dark:hover:text-zinc-300"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Sign Out
             </button>
-          </div>
         </div>
       </aside>
 

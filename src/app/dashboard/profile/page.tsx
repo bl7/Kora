@@ -3,9 +3,7 @@
 import { useState } from "react";
 import { useSession } from "../_lib/session-context";
 import { useToast } from "../_lib/toast-context";
-
-const inputClass =
-  "w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500";
+import Link from "next/link";
 
 function normalizePhoneInput(phone: string): string {
   const digits = phone.replace(/\D/g, "");
@@ -19,22 +17,13 @@ function daysUntil(dateStr: string | null | undefined): number | null {
   if (!dateStr) return null;
   const d = new Date(dateStr);
   const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  d.setHours(0, 0, 0, 0);
+  now.setHours(0, 0, 0, 0); d.setHours(0, 0, 0, 0);
   return Math.ceil((d.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
 }
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
-  try {
-    return new Date(dateStr).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  } catch {
-    return "—";
-  }
+  return new Date(dateStr).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 }
 
 export default function ProfilePage() {
@@ -42,239 +31,155 @@ export default function ProfilePage() {
   const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [working, setWorking] = useState(false);
-  const [fullName, setFullName] = useState(session.user.fullName);
-  const [email, setEmail] = useState(session.user.email);
-  const [phone, setPhone] = useState(session.user.phone ?? "");
-  const [serverError, setServerError] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+      fullName: session.user.fullName,
+      email: session.user.email,
+      phone: session.user.phone ?? "",
+  });
 
   const staffLimit = session.company.staffLimit ?? 5;
   const staffCount = session.company.staffCount ?? 0;
-  const totalAllowed = staffLimit + 1; // +1 for manager slot
+  const totalAllowed = staffLimit + 1;
   const daysLeft = daysUntil(session.company.subscriptionEndsAt);
   const subscriptionActive = daysLeft !== null && daysLeft > 0;
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    setServerError(null);
     setWorking(true);
     const res = await fetch("/api/profile", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        fullName: fullName.trim(),
-        email: email.trim().toLowerCase(),
-        phone: normalizePhoneInput(phone),
+        fullName: formData.fullName.trim(),
+        email: formData.email.trim().toLowerCase(),
+        phone: normalizePhoneInput(formData.phone),
       }),
     });
-    const data = (await res.json()) as { ok: boolean; error?: string };
+    const data = await res.json();
     setWorking(false);
-    if (!res.ok || !data.ok) {
-      setServerError(data.error ?? "Could not update profile");
-      return;
+    if (data.ok) {
+      toast.success("Profile credentials updated.");
+      await session.refreshSession();
+      setEditing(false);
+    } else {
+      toast.error(data.error || "Update failed");
     }
-    toast.success("Profile updated");
-    await session.refreshSession();
-    setEditing(false);
   }
 
-  function handleCancel() {
-    setFullName(session.user.fullName);
-    setEmail(session.user.email);
-    setPhone(session.user.phone ?? "");
-    setServerError(null);
-    setEditing(false);
-  }
+  const inputClass = "w-full rounded-xl border border-zinc-100 bg-zinc-50/50 px-4 py-3 text-[13px] font-medium text-zinc-900 outline-none transition-all focus:border-zinc-200 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-100";
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
-          Profile
-        </h1>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          Your account details and subscription info.
-        </p>
+    <div className="space-y-10">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#f4a261]">
+             <Link href="/dashboard" className="hover:underline">CONSOLE</Link>
+             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6"/></svg>
+             <span className="text-zinc-300">HUB GOVERNANCE</span>
+        </div>
+        <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">User Profile</h1>
+        <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Manage your administrative credentials and marketplace license status.</p>
       </div>
 
-      <div className="space-y-6">
-        {/* Profile details */}
-        <section className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-              Personal details
-            </h2>
-            {!editing ? (
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-              >
-                Edit
-              </button>
-            ) : null}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+          {/* Identity Card */}
+          <div className="rounded-[40px] border border-zinc-100 bg-white p-10 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="mb-10 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-[24px] bg-orange-50 text-2xl font-black text-[#f4a261] dark:bg-orange-900/20">
+                          {session.user.fullName.charAt(0)}
+                      </div>
+                      <div>
+                          <h2 className="text-xl font-black text-zinc-900 dark:text-zinc-100">{session.user.fullName}</h2>
+                          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{session.user.role} · {session.company.name}</p>
+                      </div>
+                  </div>
+                  <button 
+                    onClick={() => setEditing(!editing)}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-50 text-zinc-400 hover:bg-zinc-50 dark:border-zinc-800"
+                  >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
+              </div>
+
+              {editing ? (
+                  <form onSubmit={handleSave} className="space-y-6">
+                      <div className="space-y-1.5">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Legal Name</label>
+                          <input required className={inputClass} value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} />
+                      </div>
+                      <div className="space-y-1.5">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Administrative Email</label>
+                          <input required type="email" className={inputClass} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                      </div>
+                      <div className="space-y-1.5">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Mobile Terminal</label>
+                          <input required className={inputClass} value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                      </div>
+                      <div className="flex gap-4 pt-4">
+                          <button type="button" onClick={() => setEditing(false)} className="h-14 flex-1 rounded-2xl border border-zinc-50 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:bg-zinc-50 dark:border-zinc-800">Discard</button>
+                          <button disabled={working} className="h-14 flex-1 rounded-2xl bg-[#f4a261] text-[11px] font-black uppercase tracking-widest text-white shadow-xl shadow-orange-500/20">
+                             {working ? "Persisting..." : "Commit Update"}
+                          </button>
+                      </div>
+                  </form>
+              ) : (
+                  <div className="space-y-8">
+                      <DetailRow label="Strategic Email" value={session.user.email} />
+                      <DetailRow label="Mobile Contact" value={session.user.phone || "Not provided"} />
+                      <DetailRow label="Registered Hub" value={session.company.name} />
+                      <DetailRow label="Hub Location" value={session.company.address || "No secondary address"} />
+                  </div>
+              )}
           </div>
 
-          {editing ? (
-            <form onSubmit={handleSave} className="mt-6 space-y-4">
-              {serverError && (
-                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800/50 dark:bg-red-900/20 dark:text-red-300">
-                  {serverError}
-                </p>
-              )}
-              <div>
-                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                  Full name
-                </label>
-                <input
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                  Email
-                </label>
-                <input
-                  required
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                  Phone
-                </label>
-                <input
-                  required
-                  type="tel"
-                  value={phone}
-                  onChange={(e) =>
-                    setPhone(e.target.value.replace(/[^\d+]/g, "").slice(0, 14))
-                  }
-                  className={inputClass}
-                  placeholder="+977 98XXXXXXXX"
-                />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className="rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={working}
-                  className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                >
-                  {working ? "Saving…" : "Save"}
-                </button>
-              </div>
-            </form>
-          ) : (
-            <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-              <div>
-                <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                  Full name
-                </dt>
-                <dd className="mt-0.5 text-zinc-900 dark:text-zinc-100">
-                  {session.user.fullName}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                  Email
-                </dt>
-                <dd className="mt-0.5 text-zinc-900 dark:text-zinc-100">
-                  {session.user.email}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                  Phone
-                </dt>
-                <dd className="mt-0.5 text-zinc-900 dark:text-zinc-100">
-                  {session.user.phone ?? "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                  Company
-                </dt>
-                <dd className="mt-0.5 text-zinc-900 dark:text-zinc-100">
-                  {session.company.name}
-                </dd>
-              </div>
-              <div className="sm:col-span-2">
-                <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                  Company address
-                </dt>
-                <dd className="mt-0.5 text-zinc-900 dark:text-zinc-100">
-                  {session.company.address?.trim() || "—"}
-                </dd>
-              </div>
-            </dl>
-          )}
-        </section>
+          {/* Subscription Card */}
+          <div className="flex flex-col gap-6">
+              <div className="rounded-[40px] border border-zinc-100 bg-white p-10 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                  <h2 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-8">Asset License Status</h2>
+                  
+                  <div className="mb-10 flex items-center justify-between">
+                      <div>
+                          <p className="text-3xl font-black text-zinc-900 dark:text-zinc-100">{daysLeft ?? 0} Days</p>
+                          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">License Remaining</p>
+                      </div>
+                      <span className={`rounded-full px-4 py-1.5 text-[9px] font-black uppercase tracking-widest ${subscriptionActive ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20" : "bg-rose-50 text-rose-600 dark:bg-rose-900/20"}`}>
+                          {subscriptionActive ? "Licensed" : "License Expired"}
+                      </span>
+                  </div>
 
-        {/* Subscription */}
-        <section className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-            Subscription
-          </h2>
-          <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-            <div>
-              <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                Status
-              </dt>
-              <dd className="mt-0.5">
-                <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    subscriptionActive
-                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
-                      : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
-                  }`}
-                >
-                  {subscriptionActive ? "Active" : "Expired"}
-                </span>
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                Expires
-              </dt>
-              <dd className="mt-0.5 text-zinc-900 dark:text-zinc-100">
-                {formatDate(session.company.subscriptionEndsAt)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                Time remaining
-              </dt>
-              <dd className="mt-0.5 text-zinc-900 dark:text-zinc-100">
-                {daysLeft !== null
-                  ? daysLeft > 0
-                    ? `${daysLeft} day${daysLeft !== 1 ? "s" : ""} left`
-                    : "Expired"
-                  : "—"}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                Team members
-              </dt>
-              <dd className="mt-0.5 text-zinc-900 dark:text-zinc-100">
-                {staffCount} of {totalAllowed} allowed
-              </dd>
-            </div>
-          </dl>
-        </section>
+                  <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-zinc-500">License Expiration</span>
+                          <span className="text-[11px] font-black text-zinc-900 dark:text-zinc-100">{formatDate(session.company.subscriptionEndsAt)}</span>
+                      </div>
+                      <div className="space-y-2">
+                          <div className="flex justify-between items-baseline">
+                              <span className="text-[11px] font-bold text-zinc-500">Field Agent Capacity</span>
+                              <span className="text-[11px] font-black text-zinc-900 dark:text-zinc-100">{staffCount} / {totalAllowed} Hubs</span>
+                          </div>
+                          <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-50 dark:bg-zinc-800">
+                              <div className="h-full bg-[#f4a261] transition-all" style={{ width: `${(staffCount / totalAllowed) * 100}%` }} />
+                          </div>
+                      </div>
+                  </div>
+              </div>
+
+              <div className="rounded-[40px] border border-transparent bg-indigo-600 p-10 text-white shadow-xl shadow-indigo-500/20">
+                  <h3 className="text-xl font-black mb-2">Need higher capacity?</h3>
+                  <p className="text-sm font-medium text-indigo-100 mb-8 opacity-80">Upgrade your strategic plan to deploy more field agents and unlock advanced marketplace logistics.</p>
+                  <button className="h-14 w-full rounded-2xl bg-white text-[11px] font-black uppercase tracking-widest text-indigo-600 transition-all hover:bg-indigo-50">View Premium Plans</button>
+              </div>
+          </div>
       </div>
     </div>
   );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+    return (
+        <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{label}</p>
+            <p className="mt-1 text-[13px] font-black text-zinc-900 dark:text-zinc-100">{value}</p>
+        </div>
+    );
 }

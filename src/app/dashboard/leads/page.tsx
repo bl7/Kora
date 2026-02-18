@@ -1,567 +1,315 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
+import { useSession } from "../_lib/session-context";
 import { useToast } from "../_lib/toast-context";
-
-type Lead = {
-  id: string;
-  name: string;
-  contact_name: string | null;
-  phone: string | null;
-  email: string | null;
-  address: string | null;
-  status: "new" | "contacted" | "qualified" | "converted" | "lost";
-  notes: string | null;
-  converted_at: string | null;
-  created_at: string;
-  updated_at: string;
-  shop_name: string | null;
-  assigned_rep_name: string | null;
-  shop_id?: string | null;
-  assigned_rep_company_user_id?: string | null;
-};
-
-type Shop = { id: string; name: string };
-type Staff = { company_user_id: string; full_name: string; role: string };
+import type { Lead, LeadListResponse, Shop, ShopListResponse, Staff, StaffListResponse } from "../_lib/types";
+import Link from "next/link";
 
 const STATUS_COLORS: Record<string, string> = {
   new: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   contacted: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  qualified: "bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+  qualified: "bg-[#f4a261]/10 text-[#f4a261] dark:bg-[#f4a261]/20",
   converted: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
   lost: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
 };
 
-const NEXT_STATUS: Record<string, string> = {
-  new: "contacted",
-  contacted: "qualified",
-  qualified: "converted",
-};
-
-const inputClass =
-  "w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500";
-
 export default function LeadsPage() {
+  const session = useSession();
   const toast = useToast();
-  const [working, setWorking] = useState(false);
-  const [addModalOpen, setAddModalOpen] = useState(false);
-  const [editingLead, setEditingLead] = useState<Lead | null>(null);
-  const [filterStatus, setFilterStatus] = useState("");
+  const [tab, setTab] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [working, setWorking] = useState(false);
 
-  const params = new URLSearchParams();
-  if (filterStatus) params.set("status", filterStatus);
-  if (search) params.set("q", search);
-
-  const { data: leadsData, mutate: mutateLeads } = useSWR<{ ok: boolean; leads?: Lead[] }>(
-    `/api/manager/leads?${params}`,
-    fetcher,
-    { refreshInterval: 5000 }
-  );
-
-  const { data: shopsData } = useSWR<{ shops?: Shop[] }>(
-    "/api/manager/shops",
-    fetcher,
-    { refreshInterval: 10000 }
-  );
-
-  const { data: staffData } = useSWR<{ ok: boolean; staff?: Staff[] }>(
-    "/api/manager/staff",
-    fetcher,
-    { refreshInterval: 10000 }
-  );
+  const { data: leadsData, mutate } = useSWR<LeadListResponse>("/api/manager/leads", fetcher);
+  const { data: shopsData } = useSWR<ShopListResponse>("/api/manager/shops", fetcher);
+  const { data: staffData } = useSWR<StaffListResponse>("/api/manager/staff", fetcher);
 
   const leads = leadsData?.leads ?? [];
   const shops = shopsData?.shops ?? [];
-  const reps = (staffData?.staff ?? []).filter((s) => s.role === "rep");
-  const loading = !leadsData || !shopsData || !staffData;
+  const reps = staffData?.staff ?? [];
 
-  async function onCreate(payload: {
-    shopId?: string;
-    name: string;
-    contactName?: string;
-    phone?: string;
-    email?: string;
-    address?: string;
-    assignedRepCompanyUserId?: string;
-    notes?: string;
-  }) {
+  const filteredLeads = useMemo(() => {
+    return leads.filter((l: Lead) => {
+      const matchSearch = l.name.toLowerCase().includes(search.toLowerCase()) || 
+                          l.contact_name.toLowerCase().includes(search.toLowerCase());
+      const matchTab = tab === "all" || l.status === tab;
+      return matchSearch && matchTab;
+    });
+  }, [leads, search, tab]);
+
+  const stats = useMemo(() => ({
+    total: leads.length,
+    new: leads.filter((l: Lead) => l.status === "new").length,
+    converted: leads.filter((l: Lead) => l.status === "converted").length,
+  }), [leads]);
+
+  async function handleSave(payload: any) {
     setWorking(true);
-    const res = await fetch("/api/manager/leads", {
-      method: "POST",
+    const url = editingLead ? `/api/manager/leads/${editingLead.id}` : "/api/manager/leads";
+    const method = editingLead ? "PATCH" : "POST";
+    const res = await fetch(url, {
+      method,
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const data = (await res.json()) as { ok: boolean; error?: string };
+    const data = await res.json();
     setWorking(false);
-    if (!res.ok || !data.ok) {
-      toast.error(data.error ?? "Could not create lead");
-      return;
+    if (data.ok) {
+        toast.success(editingLead ? "Lead updated successfully." : "New lead registered.");
+        setShowModal(false);
+        setEditingLead(null);
+        mutate();
+    } else {
+        toast.error(data.error || "Operation failed");
     }
-    toast.success("Lead created.");
-    setAddModalOpen(false);
-    mutateLeads();
-  }
-
-  async function onUpdate(leadId: string, payload: Record<string, unknown>) {
-    setWorking(true);
-    const res = await fetch(`/api/manager/leads/${leadId}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = (await res.json()) as { ok: boolean; error?: string };
-    setWorking(false);
-    if (!res.ok || !data.ok) {
-      toast.error(data.error ?? "Could not update lead");
-      return;
-    }
-    toast.success("Lead updated.");
-    setEditingLead(null);
-    mutateLeads();
-  }
-
-  async function onDelete(leadId: string) {
-    if (!confirm("Delete this lead? This cannot be undone.")) return;
-    setWorking(true);
-    const res = await fetch(`/api/manager/leads/${leadId}`, { method: "DELETE" });
-    const data = (await res.json()) as { ok: boolean; error?: string };
-    setWorking(false);
-    if (!res.ok || !data.ok) {
-      toast.error(data.error ?? "Could not delete lead");
-      return;
-    }
-    toast.success("Lead deleted.");
-    mutateLeads();
   }
 
   async function onConvertToShop(l: Lead) {
-    setWorking(true);
-    const res = await fetch(`/api/manager/leads/${l.id}/convert-to-shop`, {
-      method: "POST",
-    });
-    const data = (await res.json()) as {
-      ok: boolean;
-      error?: string;
-      shop?: { id: string; name: string };
-      message?: string;
-    };
-    setWorking(false);
-    if (!res.ok || !data.ok) {
-      toast.error(data.error ?? "Could not convert lead to shop");
-      return;
+    if (!confirm(`Convert ${l.name} into a permanent Marketplace Shop?`)) return;
+    const res = await fetch(`/api/manager/leads/${l.id}/convert-to-shop`, { method: "POST" });
+    const data = await res.json();
+    if (data.ok) {
+        toast.success("Conversion successful.");
+        mutate();
+    } else {
+        toast.error(data.error || "Conversion failed");
     }
-    toast.success(
-      data.shop
-        ? `"${data.shop.name}" created. You can now place orders for this shop.`
-        : data.message ?? "Lead converted to shop."
-    );
-    mutateLeads();
   }
-
-  function handleFilter(status: string) {
-    setFilterStatus(status);
-  }
-
-  function handleSearch(q: string) {
-    setSearch(q);
-  }
-
-  const selectClass =
-    "w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500";
 
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">Leads</h1>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Track and manage sales leads from the field.
-          </p>
+    <div className="space-y-10">
+      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#f4a261]">
+            <Link href="/dashboard" className="hover:underline">CONSOLE</Link>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6"/></svg>
+            <span className="text-zinc-300">SALES PIPELINE</span>
+          </div>
+          <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Leads Tracking</h1>
         </div>
-        <button
-          type="button"
-          onClick={() => setAddModalOpen(true)}
-          className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        <button 
+          onClick={() => { setEditingLead(null); setShowModal(true); }}
+          className="flex h-14 items-center gap-2 rounded-2xl bg-[#f4a261] px-8 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/20 transition-all hover:brightness-110"
         >
-          + New Lead
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Register New Lead
         </button>
       </div>
 
-      {addModalOpen && (
-        <AddLeadModal
-          shops={shops}
-          reps={reps}
-          working={working}
-          onClose={() => setAddModalOpen(false)}
-          onSubmit={onCreate}
-        />
-      )}
-
-      {editingLead && (
-        <EditLeadModal
-          lead={editingLead}
-          shops={shops}
-          reps={reps}
-          working={working}
-          onClose={() => setEditingLead(null)}
-          onSave={(payload) => onUpdate(editingLead.id, payload)}
-        />
-      )}
-
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <select value={filterStatus} onChange={(e) => handleFilter(e.target.value)} className={selectClass}>
-          <option value="">All statuses</option>
-          <option value="new">New</option>
-          <option value="contacted">Contacted</option>
-          <option value="qualified">Qualified</option>
-          <option value="converted">Converted</option>
-          <option value="lost">Lost</option>
-        </select>
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => handleSearch(e.target.value)}
-          placeholder="Search by name, contact, or phone…"
-          className="max-w-xs rounded-lg border border-zinc-200 bg-white px-3.5 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-        />
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <StatCardSmall label="Pipeline Total" value={stats.total} icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>} />
+        <StatCardSmall label="Fresh Prospects" value={stats.new} icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>} />
+        <StatCardSmall label="Total Conversions" value={stats.converted} icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>} />
       </div>
 
-      {loading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-xl bg-zinc-200/60 dark:bg-zinc-800/60" />
-          ))}
+      <div className="rounded-[40px] border border-zinc-100 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+           <div className="flex items-center gap-1 rounded-2xl bg-zinc-50 p-1 dark:bg-zinc-800/60">
+              {["all", "new", "contacted", "qualified", "converted", "lost"].map(t => (
+                <button 
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={`rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${tab === t ? "bg-white text-[#f4a261] shadow-sm dark:bg-zinc-700" : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"}`}
+                >
+                  {t}
+                </button>
+              ))}
+           </div>
+           <div className="relative">
+              <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input 
+                type="text" 
+                placeholder="Search leads..." 
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="h-11 w-full rounded-xl border border-zinc-50 bg-zinc-50/50 pl-11 pr-4 text-[11px] font-bold outline-none transition-all focus:border-zinc-200 dark:border-zinc-800 dark:bg-zinc-800/40 md:w-64"
+              />
+           </div>
         </div>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-          <table className="w-full min-w-[640px] text-left text-sm">
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Name</th>
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Contact</th>
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Shop</th>
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Assigned Rep</th>
-                <th className="px-5 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Status</th>
-                <th className="px-5 py-3" />
+              <tr className="border-b border-zinc-50 dark:border-zinc-800/60">
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">Prospect Identity</th>
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">Communication</th>
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">Pipeline Status</th>
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">Assigned Hub</th>
+                <th className="pb-5 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400">Governance</th>
               </tr>
             </thead>
-            <tbody>
-              {leads.map((l) => (
-                <tr key={l.id} className="border-b border-zinc-100 last:border-0 dark:border-zinc-800/60">
-                  <td className="px-5 py-3.5">
-                    <p className="font-medium text-zinc-900 dark:text-zinc-100">{l.name}</p>
-                    {l.contact_name && (
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">{l.contact_name}</p>
-                    )}
+            <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/40">
+              {filteredLeads.map((l) => (
+                <tr key={l.id} className="group hover:bg-zinc-50/30 dark:hover:bg-zinc-800/20">
+                  <td className="py-6">
+                    <div>
+                      <p className="text-[13px] font-black text-zinc-900 dark:text-zinc-100">{l.name}</p>
+                      <p className="text-[11px] font-medium text-zinc-400">{l.contact_name}</p>
+                    </div>
                   </td>
-                  <td className="px-5 py-3.5 text-zinc-600 dark:text-zinc-400">
-                    {l.phone && <p className="text-xs">{l.phone}</p>}
-                    {l.email && <p className="text-xs">{l.email}</p>}
-                    {!l.phone && !l.email && <span className="text-xs">—</span>}
+                  <td className="py-6">
+                    <p className="text-[12px] font-bold text-zinc-700 dark:text-zinc-300">{l.phone}</p>
+                    <p className="text-[11px] text-zinc-400">{l.email}</p>
                   </td>
-                  <td className="px-5 py-3.5 text-zinc-600 dark:text-zinc-400">{l.shop_name ?? "—"}</td>
-                  <td className="px-5 py-3.5 text-zinc-600 dark:text-zinc-400">{l.assigned_rep_name ?? "—"}</td>
-                  <td className="px-5 py-3.5">
-                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_COLORS[l.status] ?? ""}`}>
+                  <td className="py-6">
+                    <span className={`inline-flex rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-widest ${STATUS_COLORS[l.status] || "bg-zinc-100 text-zinc-600"}`}>
                       {l.status}
                     </span>
                   </td>
-                  <td className="px-5 py-3.5 text-right">
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                      {l.status !== "converted" && l.status !== "lost" && (
-                        <button
-                          type="button"
-                          onClick={() => onConvertToShop(l)}
-                          disabled={working}
-                          className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-800/50 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/30"
+                  <td className="py-6">
+                    <p className="text-[12px] font-black text-zinc-900 dark:text-zinc-100">{l.assigned_rep_name || "Unassigned"}</p>
+                    <p className="text-[11px] font-medium text-zinc-400">{l.shop_name || "No Hub"}</p>
+                  </td>
+                  <td className="py-6 text-right">
+                    <div className="flex items-center justify-end gap-3">
+                        {l.status !== "converted" && (
+                            <button 
+                                onClick={() => onConvertToShop(l)}
+                                className="text-[10px] font-black uppercase tracking-widest text-[#f4a261] hover:underline"
+                            >
+                                Convert
+                            </button>
+                        )}
+                        <button 
+                            onClick={() => { setEditingLead(l); setShowModal(true); }}
+                            className="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
                         >
-                          Convert to shop
+                            Modify
                         </button>
-                      )}
-                      {NEXT_STATUS[l.status] && NEXT_STATUS[l.status] !== "converted" && (
-                        <button
-                          type="button"
-                          onClick={() => onUpdate(l.id, { status: NEXT_STATUS[l.status] })}
-                          disabled={working}
-                          className="rounded-md border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
-                        >
-                          → {NEXT_STATUS[l.status]}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setEditingLead(l)}
-                        className="rounded-md border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onDelete(l.id)}
-                        disabled={working}
-                        className="rounded-md border border-red-200 px-3 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50 dark:border-red-800/40 dark:text-red-400 dark:hover:bg-red-900/20"
-                      >
-                        Delete
-                      </button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {!leads.length && (
-            <div className="px-5 py-10 text-center text-sm text-zinc-400">
-              No leads yet. Click &quot;+ New Lead&quot; to create one.
-            </div>
-          )}
         </div>
+      </div>
+
+      {showModal && (
+        <LeadModal 
+            lead={editingLead} 
+            shops={shops} 
+            reps={reps} 
+            working={working}
+            onClose={() => { setShowModal(false); setEditingLead(null); }}
+            onSubmit={handleSave}
+        />
       )}
     </div>
   );
 }
 
-function ModalShell(props: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-4"
-      onClick={props.onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
-    >
-      <div
-        className="w-full max-w-lg rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 id="modal-title" className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-          {props.title}
-        </h2>
-        {props.children}
-      </div>
-    </div>
-  );
+function StatCardSmall({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
+    return (
+        <div className="flex items-center justify-between rounded-3xl border border-zinc-100 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{label}</p>
+                <p className="mt-1 text-2xl font-black text-zinc-900 dark:text-zinc-100">{value}</p>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-[#f4a261] dark:bg-orange-900/20">
+                {icon}
+            </div>
+        </div>
+    );
 }
 
-function AddLeadModal(props: {
-  shops: Shop[];
-  reps: Staff[];
-  working: boolean;
-  onClose: () => void;
-  onSubmit: (payload: {
-    shopId?: string;
-    name: string;
-    contactName?: string;
-    phone?: string;
-    email?: string;
-    address?: string;
-    assignedRepCompanyUserId?: string;
-    notes?: string;
-  }) => Promise<void>;
+function LeadModal({ lead, shops, reps, working, onClose, onSubmit }: { 
+    lead?: Lead | null; 
+    shops: Shop[]; 
+    reps: Staff[]; 
+    working: boolean; 
+    onClose: () => void; 
+    onSubmit: (payload: any) => Promise<void>; 
 }) {
-  const [shopId, setShopId] = useState("");
-  const [name, setName] = useState("");
-  const [contactName, setContactName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [address, setAddress] = useState("");
-  const [assignedRepId, setAssignedRepId] = useState("");
-  const [notes, setNotes] = useState("");
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    await props.onSubmit({
-      shopId: shopId || undefined,
-      name,
-      contactName: contactName || undefined,
-      phone: phone || undefined,
-      email: email || undefined,
-      address: address || undefined,
-      assignedRepCompanyUserId: assignedRepId || undefined,
-      notes: notes || undefined,
+    const [formData, setFormData] = useState({
+        name: lead?.name || "",
+        contactName: lead?.contact_name || "",
+        phone: lead?.phone || "",
+        email: lead?.email || "",
+        address: lead?.address || "",
+        status: lead?.status || "new",
+        shopId: lead?.shop_id || "",
+        assignedRepCompanyUserId: lead?.assigned_rep_company_user_id || "",
+        notes: lead?.notes || ""
     });
-    setShopId("");
-    setName("");
-    setContactName("");
-    setPhone("");
-    setEmail("");
-    setAddress("");
-    setAssignedRepId("");
-    setNotes("");
-    props.onClose();
-  }
 
-  return (
-    <ModalShell title="New Lead" onClose={props.onClose}>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Lead name</label>
-            <input required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="Lead name" />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Contact name</label>
-            <input value={contactName} onChange={(e) => setContactName(e.target.value)} className={inputClass} placeholder="Optional" />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Phone</label>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} placeholder="Optional" />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} placeholder="Optional" />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Shop</label>
-            <select value={shopId} onChange={(e) => setShopId(e.target.value)} className={inputClass}>
-              <option value="">Select shop (optional)</option>
-              {props.shops.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Assign to rep</label>
-            <select value={assignedRepId} onChange={(e) => setAssignedRepId(e.target.value)} className={inputClass}>
-              <option value="">Optional</option>
-              {props.reps.map((r) => (
-                <option key={r.company_user_id} value={r.company_user_id}>{r.full_name}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Address</label>
-          <input value={address} onChange={(e) => setAddress(e.target.value)} className={inputClass} placeholder="Optional" />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Notes</label>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={inputClass} placeholder="Optional" />
-        </div>
-        <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={props.onClose} className="rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800">
-            Cancel
-          </button>
-          <button type="submit" disabled={props.working} className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">
-            {props.working ? "Creating…" : "Create Lead"}
-          </button>
-        </div>
-      </form>
-    </ModalShell>
-  );
-}
+    const inputClass = "w-full rounded-xl border border-zinc-100 bg-zinc-50/50 px-4 py-3 text-[13px] font-medium text-zinc-900 outline-none transition-all focus:border-zinc-200 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-100";
 
-function EditLeadModal(props: {
-  lead: Lead;
-  shops: Shop[];
-  reps: Staff[];
-  working: boolean;
-  onClose: () => void;
-  onSave: (payload: Record<string, unknown>) => Promise<void>;
-}) {
-  const l = props.lead;
-  const [name, setName] = useState(l.name);
-  const [contactName, setContactName] = useState(l.contact_name ?? "");
-  const [phone, setPhone] = useState(l.phone ?? "");
-  const [email, setEmail] = useState(l.email ?? "");
-  const [address, setAddress] = useState(l.address ?? "");
-  const [status, setStatus] = useState(l.status);
-  const [shopId, setShopId] = useState(
-    l.shop_id ?? (l.shop_name ? (props.shops.find((s) => s.name === l.shop_name)?.id ?? "") : "")
-  );
-  const [assignedRepId, setAssignedRepId] = useState(
-    l.assigned_rep_company_user_id ?? (l.assigned_rep_name ? (props.reps.find((r) => r.full_name === l.assigned_rep_name)?.company_user_id ?? "") : "")
-  );
-  const [notes, setNotes] = useState(l.notes ?? "");
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/20 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-2xl overflow-hidden rounded-[40px] border border-zinc-100 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="flex items-center justify-between border-b border-zinc-50 px-10 py-8 dark:border-zinc-800">
+                    <div>
+                        <h3 className="text-xl font-black text-zinc-900 dark:text-zinc-100">{lead ? "Modify Prospect Intelligence" : "Register Prospect"}</h3>
+                        <p className="text-xs font-medium text-zinc-400 uppercase tracking-widest mt-1">Lead ID #{lead?.id.slice(0, 8) || "NEW"}</p>
+                    </div>
+                    <button onClick={onClose} className="rounded-xl border border-zinc-100 p-2 text-zinc-400 hover:bg-zinc-50 dark:border-zinc-800">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                
+                <form onSubmit={e => { e.preventDefault(); onSubmit(formData); }} className="max-h-[70vh] overflow-y-auto p-10">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Prospect Title</label>
+                            <input required className={inputClass} placeholder="Entity Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Decision Maker</label>
+                            <input required className={inputClass} placeholder="Full Name" value={formData.contactName} onChange={e => setFormData({...formData, contactName: e.target.value})} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Mobile Link</label>
+                            <input required className={inputClass} placeholder="+977" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Intelligence Email</label>
+                            <input required type="email" className={inputClass} placeholder="prospect@kora.com" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                        </div>
+                        <div className="col-span-2 space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Operational Address</label>
+                            <input required className={inputClass} placeholder="Full Location Details" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
+                        </div>
+                        
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Pipeline Stage</label>
+                            <select className={inputClass} value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
+                                {["new", "contacted", "qualified", "converted", "lost"].map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Parent Hub (Optional)</label>
+                            <select className={inputClass} value={formData.shopId} onChange={e => setFormData({...formData, shopId: e.target.value})}>
+                                <option value="">Independent</option>
+                                {shops.map((s: Shop) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Assigned Agent</label>
+                            <select className={inputClass} value={formData.assignedRepCompanyUserId} onChange={e => setFormData({...formData, assignedRepCompanyUserId: e.target.value})}>
+                                <option value="">Unassigned</option>
+                                {reps.map((r: Staff) => <option key={r.company_user_id} value={r.company_user_id}>{r.full_name}</option>)}
+                            </select>
+                        </div>
+                        <div className="col-span-2 space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Intelligence Notes</label>
+                            <textarea className={`${inputClass} h-32 resize-none`} placeholder="Field findings and prospect context..." value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} />
+                        </div>
+                    </div>
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    await props.onSave({
-      name,
-      contactName: contactName || null,
-      phone: phone || null,
-      email: email || null,
-      address: address || null,
-      shopId: shopId || null,
-      assignedRepCompanyUserId: assignedRepId || null,
-      status,
-      notes: notes || null,
-    });
-    props.onClose();
-  }
-
-  return (
-    <ModalShell title="Edit Lead" onClose={props.onClose}>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Name</label>
-            <input required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Contact name</label>
-            <input value={contactName} onChange={(e) => setContactName(e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Phone</label>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Shop</label>
-            <select value={shopId} onChange={(e) => setShopId(e.target.value)} className={inputClass}>
-              <option value="">No shop</option>
-              {props.shops.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Assigned rep</label>
-            <select value={assignedRepId} onChange={(e) => setAssignedRepId(e.target.value)} className={inputClass}>
-              <option value="">No rep</option>
-              {props.reps.map((r) => (
-                <option key={r.company_user_id} value={r.company_user_id}>{r.full_name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Status</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value as Lead["status"])} className={inputClass}>
-              <option value="new">New</option>
-              <option value="contacted">Contacted</option>
-              <option value="qualified">Qualified</option>
-              <option value="converted">Converted</option>
-              <option value="lost">Lost</option>
-            </select>
-          </div>
+                    <div className="mt-10 flex gap-4">
+                        <button type="button" onClick={onClose} className="h-14 flex-1 rounded-2xl border border-zinc-100 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:bg-zinc-50 dark:border-zinc-800">Discard</button>
+                        <button disabled={working} className="h-14 flex-1 rounded-2xl bg-[#f4a261] text-[11px] font-black uppercase tracking-widest text-white shadow-xl shadow-orange-500/20">
+                            {working ? "Processing..." : lead ? "Modify Intelligence" : "Deploy Prospect"}
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Address</label>
-          <input value={address} onChange={(e) => setAddress(e.target.value)} className={inputClass} />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Notes</label>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={inputClass} />
-        </div>
-        <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={props.onClose} className="rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800">
-            Cancel
-          </button>
-          <button type="submit" disabled={props.working} className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">
-            {props.working ? "Saving…" : "Save"}
-          </button>
-        </div>
-      </form>
-    </ModalShell>
-  );
+    );
 }
