@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { useSession } from "../_lib/session-context";
 import { useToast } from "../_lib/toast-context";
 import type { Lead, LeadListResponse, Shop, ShopListResponse, Staff, StaffListResponse } from "../_lib/types";
 import Link from "next/link";
+import { Breadcrumbs } from "../_lib/breadcrumbs";
 
 const STATUS_COLORS: Record<string, string> = {
   new: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
@@ -19,19 +20,36 @@ const STATUS_COLORS: Record<string, string> = {
 export default function LeadsPage() {
   const session = useSession();
   const toast = useToast();
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [working, setWorking] = useState(false);
   const [tab, setTab] = useState<string>("all");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(""); // Renamed searchInput to search
   const [showModal, setShowModal] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
-  const [working, setWorking] = useState(false);
 
-  const { data: leadsData, mutate } = useSWR<LeadListResponse>("/api/manager/leads", fetcher);
   const { data: shopsData } = useSWR<ShopListResponse>("/api/manager/shops", fetcher);
   const { data: staffData } = useSWR<StaffListResponse>("/api/manager/staff", fetcher);
 
-  const leads = leadsData?.leads ?? [];
   const shops = shopsData?.shops ?? [];
   const reps = staffData?.staff ?? [];
+
+  const loadLeads = useCallback(async () => {
+    const res = await fetch("/api/manager/leads");
+    const data = await res.json();
+    if (data.ok) setLeads(data.leads || []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadLeads();
+  }, [loadLeads]);
+
+  const stats = useMemo(() => ({
+    total: leads.length,
+    new: leads.filter((l: Lead) => l.status === "new").length,
+    converted: leads.filter((l: Lead) => l.status === "converted").length,
+  }), [leads]);
 
   const filteredLeads = useMemo(() => {
     return leads.filter((l: Lead) => {
@@ -41,12 +59,6 @@ export default function LeadsPage() {
       return matchSearch && matchTab;
     });
   }, [leads, search, tab]);
-
-  const stats = useMemo(() => ({
-    total: leads.length,
-    new: leads.filter((l: Lead) => l.status === "new").length,
-    converted: leads.filter((l: Lead) => l.status === "converted").length,
-  }), [leads]);
 
   async function handleSave(payload: any) {
     setWorking(true);
@@ -63,7 +75,7 @@ export default function LeadsPage() {
         toast.success(editingLead ? "Lead updated successfully." : "New lead registered.");
         setShowModal(false);
         setEditingLead(null);
-        mutate();
+        loadLeads(); // Changed mutate() to loadLeads()
     } else {
         toast.error(data.error || "Operation failed");
     }
@@ -75,16 +87,34 @@ export default function LeadsPage() {
     const data = await res.json();
     if (data.ok) {
         toast.success("Conversion successful.");
-        mutate();
+        loadLeads(); // Changed mutate() to loadLeads()
     } else {
         toast.error(data.error || "Conversion failed");
+    }
+  }
+
+  // Added handleDelete function
+  async function handleDelete(id: string) {
+    if (!confirm("Remove this lead?")) return;
+    setWorking(true);
+    const res = await fetch(`/api/manager/leads/${id}`, { method: "DELETE" });
+    const data = await res.json();
+    setWorking(false);
+    if (data.ok) {
+        toast.success("Lead removed.");
+        loadLeads();
+    } else {
+        toast.error(data.error || "Delete failed");
     }
   }
 
   return (
     <div className="space-y-10">
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Leads Tracking</h1>
+          <div className="space-y-1">
+            <Breadcrumbs items={[{ label: "LEADS" }]} />
+            <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Leads Tracking</h1>
+          </div>
         <button 
           onClick={() => { setEditingLead(null); setShowModal(true); }}
           className="flex h-14 items-center gap-2 rounded-2xl bg-[#f4a261] px-8 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/20 transition-all hover:brightness-110"

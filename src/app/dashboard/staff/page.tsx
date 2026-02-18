@@ -8,6 +8,7 @@ import { fetcher } from "@/lib/fetcher";
 import type { Staff, StaffCounts, StaffListResponse, Visit, VisitListResponse, AttendanceLog, AttendanceLogListResponse } from "../_lib/types";
 import { useSession } from "../_lib/session-context";
 import { useToast } from "../_lib/toast-context";
+import { Breadcrumbs } from "../_lib/breadcrumbs";
 
 type Tab = "active" | "invited" | "inactive";
 
@@ -343,7 +344,7 @@ export default function StaffPage() {
 
   return (
     <div className="space-y-8">
-      {/* Attendance Stats */}
+      <Breadcrumbs items={[{ label: "STAFF" }]} />
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <StatCard
           title="At Work Now"

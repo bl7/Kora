@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useSession } from "../_lib/session-context";
 import { useToast } from "../_lib/toast-context";
 import type { Product, ProductListResponse } from "../_lib/types";
+import { Breadcrumbs } from "../_lib/breadcrumbs";
 
 function StatCard({ title, value, subValue, icon, accentColor }: { 
   title: string; 
@@ -64,12 +65,6 @@ export default function ProductsPage() {
 
   const loadProducts = useCallback(
     async (q: string) => {
-      const params = new URLSearchParams();
-      // Fetch all products to handle filtering client-side or we can use the API's status filter
-      // For the new design with "All Categories/Statuses" dropdowns, it's better to fetch more and filter.
-      // But the API currently takes 'status' ('active'/'inactive').
-      // Let's fetch both if 'all' is selected.
-      
       const fetchList = async (status?: string) => {
           const p = new URLSearchParams();
           if (status) p.set("status", status);
@@ -110,8 +105,6 @@ export default function ProductsPage() {
   }, [products]);
 
   const filteredProducts = useMemo(() => {
-      // Products are already filtered by status if tab !== "all" because of loadProducts fetching logic
-      // But we can double check here for a smooth UI
       return products.filter(p => {
           if (tab === "active") return p.is_active;
           if (tab === "inactive") return !p.is_active;
@@ -176,11 +169,7 @@ export default function ProductsPage() {
       {/* Header */}
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">
-             <Link href="/dashboard" className="hover:text-zinc-600">HOME</Link>
-             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6"/></svg>
-             <span className="text-zinc-300">PRODUCTS</span>
-          </div>
+          <Breadcrumbs items={[{ label: "PRODUCTS" }]} />
           <h1 className="text-3xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Product Inventory</h1>
           <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Manage your product catalog and inventory status.</p>
         </div>

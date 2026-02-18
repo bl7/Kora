@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "../_lib/session-context";
 import { useToast } from "../_lib/toast-context";
+import { useSession } from "../_lib/session-context";
+import { Breadcrumbs } from "../_lib/breadcrumbs";
 import Link from "next/link";
 
 function normalizePhoneInput(phone: string): string {
@@ -34,7 +35,7 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState({
       fullName: session.user.fullName,
       email: session.user.email,
-      phone: session.user.phone ?? "",
+      phone: session.user.phone || "",
   });
 
   const staffLimit = session.company.staffLimit ?? 5;
@@ -69,10 +70,13 @@ export default function ProfilePage() {
   const inputClass = "w-full rounded-xl border border-zinc-100 bg-zinc-50/50 px-4 py-3 text-[13px] font-medium text-zinc-900 outline-none transition-all focus:border-zinc-200 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-100";
 
   return (
-    <div className="space-y-10">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">User Profile</h1>
-        <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Manage your profile details and company info.</p>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1">
+          <Breadcrumbs items={[{ label: "PROFILE" }]} />
+          <h1 className="text-3xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Settings</h1>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">

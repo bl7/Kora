@@ -7,6 +7,7 @@ import { useSession } from "../_lib/session-context";
 import { useToast } from "../_lib/toast-context";
 import type { Task, TaskListResponse, Shop, ShopListResponse, Lead, LeadListResponse, Staff, StaffListResponse } from "../_lib/types";
 import Link from "next/link";
+import { Breadcrumbs } from "../_lib/breadcrumbs";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",

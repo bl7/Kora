@@ -6,6 +6,7 @@ import { fetcher } from "@/lib/fetcher";
 import { useToast } from "../_lib/toast-context";
 import { useSession } from "../_lib/session-context";
 import Link from "next/link";
+import { Breadcrumbs } from "../_lib/breadcrumbs";
 
 type OrderItem = {
   id: string;
@@ -179,11 +180,7 @@ export default function OrdersPage() {
       {/* Header */}
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">
-             <Link href="/dashboard" className="hover:text-zinc-600">HOME</Link>
-             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6"/></svg>
-             <span className="text-zinc-300">ORDERS</span>
-          </div>
+          <Breadcrumbs items={[{ label: "ORDERS" }]} />
           <h1 className="text-3xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Marketplace Orders</h1>
           <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Track and process customer orders across all channels.</p>
         </div>

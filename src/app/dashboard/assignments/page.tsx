@@ -1,41 +1,59 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { useSession } from "../_lib/session-context";
 import { useToast } from "../_lib/toast-context";
 import type { Shop, ShopListResponse, Staff, StaffListResponse, ShopAssignment, ShopAssignmentListResponse } from "../_lib/types";
+import { Breadcrumbs } from "../_lib/breadcrumbs";
 import Link from "next/link";
 
 export default function AssignmentsPage() {
   const session = useSession();
   const toast = useToast();
-  const [showModal, setShowModal] = useState(false);
+  const [assignments, setAssignments] = useState<ShopAssignment[]>([]);
+  const [shops, setShops] = useState<Shop[]>([]);
+  const [reps, setReps] = useState<Staff[]>([]);
+  const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
-  const { data: assignmentsData, mutate } = useSWR<ShopAssignmentListResponse>("/api/manager/shop-assignments", fetcher);
-  const { data: shopsData } = useSWR<ShopListResponse>("/api/manager/shops", fetcher);
-  const { data: staffData } = useSWR<StaffListResponse>("/api/manager/staff", fetcher);
+  // Stats
+  const stats = useMemo(() => {
+    return {
+      totalAssignments: assignments.length,
+      activeReps: new Set(assignments.map(a => a.rep_company_user_id)).size,
+      coverageRate: shops.length > 0 ? Math.round((new Set(assignments.map(a => a.shop_id)).size / shops.length) * 100) : 0
+    };
+  }, [assignments, shops]);
 
-  const assignments = assignmentsData?.assignments ?? [];
-  const shops = shopsData?.shops ?? [];
-  const reps = staffData?.staff?.filter(s => s.role === "rep" && (s.status === "active" || s.status === "inactive")) ?? [];
+  const loadData = useCallback(async () => {
+    const [aRes, sRes, rRes] = await Promise.all([
+      fetch("/api/manager/shop-assignments"),
+      fetch("/api/manager/shops"),
+      fetch("/api/manager/staff?role=rep")
+    ]);
+    const [aData, sData, rData] = await Promise.all([aRes.json(), sRes.json(), rRes.json()]);
+    
+    if (aData.ok) setAssignments(aData.assignments || []);
+    if (sData.ok) setShops(sData.shops || []);
+    if (rData.ok) setReps(rData.staff || []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const groupedAssignments = useMemo(() => {
     const map: Record<string, { rep: Staff; assignedShops: ShopAssignment[] }> = {};
-    
-    // Ensure all reps are in the map
     reps.forEach(r => {
         map[r.company_user_id] = { rep: r, assignedShops: [] };
     });
-
     assignments.forEach(a => {
-      if (map[a.rep_company_user_id]) {
-        map[a.rep_company_user_id].assignedShops.push(a);
-      }
+      if (map[a.rep_company_user_id]) map[a.rep_company_user_id].assignedShops.push(a);
     });
-
     return Object.values(map);
   }, [assignments, reps]);
 
@@ -51,7 +69,7 @@ export default function AssignmentsPage() {
     if (data.ok) {
         toast.success("Shop assigned successfully.");
         setShowModal(false);
-        mutate();
+        loadData();
     } else {
         toast.error(data.error || "Assignment failed");
     }
@@ -63,16 +81,20 @@ export default function AssignmentsPage() {
     const data = await res.json();
     if (data.ok) {
         toast.success("Assignment removed.");
-        mutate();
+        loadData();
     } else {
         toast.error(data.error || "Action failed");
     }
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
+      {/* Header */}
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Shop Assignments</h1>
+        <div className="space-y-1">
+          <Breadcrumbs items={[{ label: "ASSIGNMENTS" }]} />
+          <h1 className="text-3xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Shop Assignments</h1>
+        </div>
         <button 
           onClick={() => setShowModal(true)}
           className="flex h-14 items-center gap-2 rounded-2xl bg-[#f4a261] px-8 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/20 transition-all hover:brightness-110"

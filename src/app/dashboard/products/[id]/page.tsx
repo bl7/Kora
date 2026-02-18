@@ -11,6 +11,7 @@ import type {
   Order, 
   OrderListResponse 
 } from "../../_lib/types";
+import { Breadcrumbs } from "../../_lib/breadcrumbs";
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
@@ -62,13 +63,10 @@ export default function ProductDetailsPage(props: { params: Promise<{ id: string
       {/* Breadcrumbs & Title Section */}
       <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
         <div className="space-y-4">
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">
-             <Link href="/dashboard" className="hover:text-zinc-600">DASHBOARD</Link>
-             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6"/></svg>
-             <Link href="/dashboard/products" className="hover:text-zinc-600">PRODUCTS</Link>
-             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6"/></svg>
-             <span className="text-zinc-300">{product.sku}</span>
-          </div>
+          <Breadcrumbs items={[
+            { label: "PRODUCTS", href: "/dashboard/products" },
+            { label: product.sku }
+          ]} />
           <div>
             <div className="flex items-center gap-3 mb-2">
                 <span className="rounded-md bg-zinc-900 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-white dark:bg-zinc-100 dark:text-zinc-900">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
+import { Breadcrumbs } from "../_lib/breadcrumbs";
 import Link from "next/link";
 import type { 
   Shop, 
@@ -166,6 +167,7 @@ export default function ShopsPage() {
     <div className="space-y-8 p-4 md:p-0">
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div className="space-y-1">
+          <Breadcrumbs items={[{ label: "SHOPS" }]} />
           <h1 className="text-3xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Our Shops</h1>
           <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">List of all registered shops and their visit history.</p>
         </div>

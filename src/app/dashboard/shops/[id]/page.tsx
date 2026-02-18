@@ -14,6 +14,7 @@ import type {
   StaffListResponse,
   ShopAssignmentListResponse
 } from "../../_lib/types";
+import { Breadcrumbs } from "../../_lib/breadcrumbs";
 
 function StatCard({ title, value, subValue, icon, accentColor }: { 
   title: string; 
@@ -138,11 +139,10 @@ export default function ShopDetailsPage(props: { params: Promise<{ id: string }>
       {/* Header & Meta */}
       <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
         <div className="space-y-3">
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">
-            <Link href="/dashboard/shops" className="hover:text-zinc-600">SHOPS</Link>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6"/></svg>
-            <span className="text-zinc-300">{shop.name.toUpperCase()}</span>
-          </div>
+          <Breadcrumbs items={[
+            { label: "SHOPS", href: "/dashboard/shops" },
+            { label: shop.name }
+          ]} />
           <div className="flex items-center gap-4">
             <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">{shop.name}</h1>
             <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">

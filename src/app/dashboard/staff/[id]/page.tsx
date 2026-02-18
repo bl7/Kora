@@ -13,6 +13,7 @@ import type {
   AttendanceLog, 
   AttendanceLogListResponse 
 } from "../../_lib/types";
+import { Breadcrumbs } from "../../_lib/breadcrumbs";
 
 export default function StaffDetailsPage(props: { params: Promise<{ id: string }> }) {
   const params = use(props.params);
@@ -147,14 +148,10 @@ export default function StaffDetailsPage(props: { params: Promise<{ id: string }
 
   return (
     <div className="space-y-8">
-      {/* Breadcrumbs */}
-      <nav className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-zinc-400">
-        <Link href="/dashboard" className="hover:text-zinc-600 dark:hover:text-zinc-200">Dashboard</Link>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6"/></svg>
-        <Link href="/dashboard/staff" className="hover:text-zinc-600 dark:hover:text-zinc-200">Attendance</Link>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6"/></svg>
-        <span className="text-zinc-900 dark:text-zinc-100">{staff.full_name}</span>
-      </nav>
+      <Breadcrumbs items={[
+        { label: "STAFF", href: "/dashboard/staff" },
+        { label: staff.full_name }
+      ]} />
 
       {/* Profile Header */}
       <div className="group relative overflow-hidden rounded-[32px] border border-zinc-200 bg-white p-8 shadow-sm transition-all hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">

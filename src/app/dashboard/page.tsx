@@ -6,6 +6,7 @@ import { fetcher } from "@/lib/fetcher";
 import { useSession } from "./_lib/session-context";
 import type { StaffListResponse, ShopListResponse, LeadListResponse, OrderListResponse, Order, Staff, Lead, VisitListResponse, TaskListResponse } from "./_lib/types";
 import Link from "next/link";
+import { Breadcrumbs } from "./_lib/breadcrumbs";
 
 function StatCard({ label, value, icon, suffix, color = "orange" }: { label: string; value: number | string; icon: React.ReactNode; suffix?: string; color?: "orange" | "indigo" | "emerald" | "blue" }) {
   const colors = {
@@ -79,6 +80,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-10 pb-12">
       <div className="flex flex-col gap-2">
+        <Breadcrumbs items={[]} />
         <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Dashboard Summary</h1>
         <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">A quick look at your shops, field staff, and recent work.</p>
       </div>
