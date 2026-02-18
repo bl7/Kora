@@ -72,14 +72,7 @@ export default function AssignmentsPage() {
   return (
     <div className="space-y-10">
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#f4a261]">
-            <Link href="/dashboard" className="hover:underline">CONSOLE</Link>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6"/></svg>
-            <span className="text-zinc-300">ROUTE MANAGEMENT</span>
-          </div>
           <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Shop Assignments</h1>
-        </div>
         <button 
           onClick={() => setShowModal(true)}
           className="flex h-14 items-center gap-2 rounded-2xl bg-[#f4a261] px-8 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/20 transition-all hover:brightness-110"
@@ -99,7 +92,7 @@ export default function AssignmentsPage() {
                 </div>
                 <div>
                   <p className="text-[14px] font-black text-zinc-900 dark:text-zinc-100">{rep.full_name}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Field Agent</p>
+                   <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Sales Rep</p>
                 </div>
               </div>
               <span className={`rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest ${rep.status === 'active' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20' : 'bg-zinc-100 text-zinc-500'}`}>
@@ -135,7 +128,7 @@ export default function AssignmentsPage() {
 
             <div className="mt-8 border-t border-zinc-50 pt-6 dark:border-zinc-800">
                 <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Route Capacity</p>
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Load Capacity</p>
                     <p className="text-[10px] font-black text-[#f4a261] uppercase tracking-widest">{assignedShops.length} SHOPS</p>
                 </div>
                 <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-50 dark:bg-zinc-800">
@@ -180,7 +173,7 @@ function AssignmentModal({ shops, reps, assignments, working, onClose, onSubmit 
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/20 p-4 backdrop-blur-sm">
             <div className="w-full max-w-lg overflow-hidden rounded-[40px] border border-zinc-100 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
                 <div className="flex items-center justify-between border-b border-zinc-50 px-10 py-8 dark:border-zinc-800">
-                    <h3 className="text-xl font-black text-zinc-900 dark:text-zinc-100">Assign Shop to Agent</h3>
+                    <h3 className="text-xl font-black text-zinc-900 dark:text-zinc-100">Assign Shop to Rep</h3>
                     <button onClick={onClose} className="rounded-xl border border-zinc-100 p-2 text-zinc-400 hover:bg-zinc-50 dark:border-zinc-800">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
@@ -189,9 +182,9 @@ function AssignmentModal({ shops, reps, assignments, working, onClose, onSubmit 
                 <form onSubmit={e => { e.preventDefault(); onSubmit(formData); }} className="p-10">
                     <div className="space-y-6">
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Select Field Agent</label>
+                             <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Select Sales Rep</label>
                             <select required className={inputClass} value={formData.repCompanyUserId} onChange={e => setFormData({...formData, repCompanyUserId: e.target.value})}>
-                                <option value="">Choose Agent</option>
+                                <option value="">Choose Rep</option>
                                 {reps.map(r => <option key={r.company_user_id} value={r.company_user_id}>{r.full_name} ({r.status})</option>)}
                             </select>
                         </div>

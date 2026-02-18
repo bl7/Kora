@@ -85,27 +85,20 @@ export default function TasksPage() {
   return (
     <div className="space-y-10">
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#f4a261]">
-            <Link href="/dashboard" className="hover:underline">CONSOLE</Link>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6"/></svg>
-            <span className="text-zinc-300">FIELD DIRECTIVES</span>
-          </div>
-          <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Task Management</h1>
-        </div>
+          <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Tasks Management</h1>
         <button 
           onClick={() => { setEditingTask(null); setShowModal(true); }}
           className="flex h-14 items-center gap-2 rounded-2xl bg-[#f4a261] px-8 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/20 transition-all hover:brightness-110"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Deploy Directive
+          Add New Task
         </button>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <StatCardSmall label="Open Directives" value={stats.pending} icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>} />
-        <StatCardSmall label="Resolved Today" value={stats.completed} icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>} />
-        <StatCardSmall label="Directives Total" value={stats.total} icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>} />
+        <StatCardSmall label="Pending Tasks" value={stats.pending} icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>} />
+        <StatCardSmall label="Completed Today" value={stats.completed} icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>} />
+        <StatCardSmall label="Total Tasks" value={stats.total} icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>} />
       </div>
 
       <div className="rounded-[40px] border border-zinc-100 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -128,14 +121,14 @@ export default function TasksPage() {
                  onChange={e => setRepFilter(e.target.value)}
                  className="h-11 rounded-xl border border-zinc-50 bg-zinc-50/50 px-4 text-[11px] font-bold text-zinc-500 outline-none transition-all focus:border-zinc-200 dark:border-zinc-800 dark:bg-zinc-800/40"
                >
-                  <option value="all">All Agents</option>
+                  <option value="all">All Staff</option>
                   {reps.map(r => <option key={r.company_user_id} value={r.company_user_id}>{r.full_name}</option>)}
                </select>
                <div className="relative">
                   <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                   <input 
                     type="text" 
-                    placeholder="Search directives..." 
+                    placeholder="Search tasks..." 
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     className="h-11 w-full rounded-xl border border-zinc-50 bg-zinc-50/50 pl-11 pr-4 text-[11px] font-bold outline-none transition-all focus:border-zinc-200 dark:border-zinc-800 dark:bg-zinc-800/40 md:w-64"
@@ -148,11 +141,11 @@ export default function TasksPage() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-zinc-50 dark:border-zinc-800/60">
-                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">Directive Title</th>
-                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">Assigned Agent</th>
-                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">Linked Asset</th>
-                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">Directive Status</th>
-                <th className="pb-5 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400">Deployment</th>
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">TASK NAME</th>
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">SALES REP</th>
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">LINKED TO</th>
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">STATUS</th>
+                <th className="pb-5 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400">OPTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/40">
@@ -169,8 +162,8 @@ export default function TasksPage() {
                     <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mt-0.5">Role: Field Agent</p>
                   </td>
                   <td className="py-6">
-                    <p className="text-[12px] font-black text-zinc-900 dark:text-zinc-100">{t.shop_name || t.lead_name || "Global"}</p>
-                    <p className="text-[10px] font-bold text-[#f4a261] uppercase tracking-widest mt-0.5">{t.shop_name ? "Shop Asset" : t.lead_name ? "Prospect" : "General"}</p>
+                    <p className="text-[12px] font-black text-zinc-900 dark:text-zinc-100">{t.shop_name || t.lead_name || "General"}</p>
+                    <p className="text-[10px] font-bold text-[#f4a261] uppercase tracking-widest mt-0.5">{t.shop_name ? "Shop" : t.lead_name ? "Lead" : "None"}</p>
                   </td>
                   <td className="py-6">
                     <span className={`inline-flex rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-widest ${STATUS_COLORS[t.status] || "bg-zinc-100 text-zinc-600"}`}>
@@ -187,12 +180,12 @@ export default function TasksPage() {
                                 Resolve
                             </button>
                         )}
-                        <button 
-                            onClick={() => { setEditingTask(t); setShowModal(true); }}
-                            className="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
-                        >
-                            Modify
-                        </button>
+                             <button 
+                                onClick={() => { setEditingTask(t); setShowModal(true); }}
+                                className="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+                            >
+                                Edit
+                            </button>
                     </div>
                   </td>
                 </tr>
@@ -257,8 +250,8 @@ function TaskModal({ task, shops, leads, reps, working, onClose, onSubmit }: {
             <div className="w-full max-w-2xl overflow-hidden rounded-[40px] border border-zinc-100 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
                 <div className="flex items-center justify-between border-b border-zinc-50 px-10 py-8 dark:border-zinc-800">
                     <div>
-                        <h3 className="text-xl font-black text-zinc-900 dark:text-zinc-100">{task ? "Modify Field Directive" : "Deploy Directive"}</h3>
-                        <p className="text-xs font-medium text-zinc-400 uppercase tracking-widest mt-1">Deployment ID #{task?.id.slice(0, 8) || "NEW"}</p>
+                        <h3 className="text-xl font-black text-zinc-900 dark:text-zinc-100">{task ? "Edit Task" : "Add New Task"}</h3>
+                        <p className="text-xs font-medium text-zinc-400 uppercase tracking-widest mt-1">Task ID #{task?.id.slice(0, 8) || "NEW"}</p>
                     </div>
                     <button onClick={onClose} className="rounded-xl border border-zinc-100 p-2 text-zinc-400 hover:bg-zinc-50 dark:border-zinc-800">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -267,38 +260,38 @@ function TaskModal({ task, shops, leads, reps, working, onClose, onSubmit }: {
                 
                 <form onSubmit={e => { e.preventDefault(); onSubmit(formData); }} className="p-10">
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                        <div className="col-span-2 space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Directive Header</label>
-                            <input required className={inputClass} placeholder="Deployment Title" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
+                         <div className="col-span-2 space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Task Title</label>
+                            <input required className={inputClass} placeholder="Task Title" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
                         </div>
                         <div className="col-span-2 space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Mission Description</label>
-                            <textarea required className={`${inputClass} h-32 resize-none`} placeholder="Deployment Context and Requirements..." value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Task Description</label>
+                            <textarea required className={`${inputClass} h-32 resize-none`} placeholder="What needs to be done?" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
                         </div>
                         
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Deployed Agent</label>
+                         <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Assign To Staff</label>
                             <select required className={inputClass} value={formData.repCompanyUserId} onChange={e => setFormData({...formData, repCompanyUserId: e.target.value})}>
-                                <option value="">Select Agent</option>
+                                <option value="">Select Staff</option>
                                 {reps.map(r => <option key={r.company_user_id} value={r.company_user_id}>{r.full_name}</option>)}
                             </select>
                         </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Deployment Window</label>
+                         <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Due Date</label>
                             <input required type="datetime-local" className={inputClass} value={formData.deadline} onChange={e => setFormData({...formData, deadline: e.target.value})} />
                         </div>
 
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Shop Asset Link (Optional)</label>
+                         <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Linked Shop (Optional)</label>
                             <select className={inputClass} value={formData.shopId} onChange={e => { setFormData({...formData, shopId: e.target.value, leadId: ""}); }}>
-                                <option value="">No Shop Asset</option>
+                                <option value="">No Shop</option>
                                 {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Prospect Link (Optional)</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Linked Lead (Optional)</label>
                             <select className={inputClass} value={formData.leadId} onChange={e => { setFormData({...formData, leadId: e.target.value, shopId: ""}); }}>
-                                <option value="">No Prospect</option>
+                                <option value="">No Lead</option>
                                 {leads.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                             </select>
                         </div>
@@ -306,8 +299,8 @@ function TaskModal({ task, shops, leads, reps, working, onClose, onSubmit }: {
 
                     <div className="mt-10 flex gap-4">
                         <button type="button" onClick={onClose} className="h-14 flex-1 rounded-2xl border border-zinc-100 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:bg-zinc-50 dark:border-zinc-800">Cancel</button>
-                        <button disabled={working} className="h-14 flex-1 rounded-2xl bg-[#f4a261] text-[11px] font-black uppercase tracking-widest text-white shadow-xl shadow-orange-500/20">
-                            {working ? "Deploying..." : task ? "Update Directive" : "Launch Mission"}
+                         <button disabled={working} className="h-14 flex-1 rounded-2xl bg-[#f4a261] text-[11px] font-black uppercase tracking-widest text-white shadow-xl shadow-orange-500/20">
+                            {working ? "Saving..." : task ? "Update Task" : "Create Task"}
                         </button>
                     </div>
                 </form>

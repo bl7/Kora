@@ -166,8 +166,8 @@ export default function ShopsPage() {
     <div className="space-y-8 p-4 md:p-0">
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div className="space-y-1">
-          <h1 className="text-3xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Shops & Client Directory</h1>
-          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Manage shop locations and representative visit schedules.</p>
+          <h1 className="text-3xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Our Shops</h1>
+          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">List of all registered shops and their visit history.</p>
         </div>
         <div className="flex items-center gap-3">
             <button className="flex h-11 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-5 text-xs font-bold uppercase tracking-widest text-zinc-600 transition-all hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800">
@@ -185,8 +185,8 @@ export default function ShopsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <StatCard title="TOTAL SHOPS" value={stats.total.toLocaleString()} trend="12% vs last month" trendUp={true} icon="shop" />
-        <StatCard title="VISITED THIS WEEK" value={stats.visitedThisWeek.toLocaleString()} trend="5.4% vs last week" trendUp={true} icon="calendar" />
+        <StatCard title="TOTAL SHOPS" value={stats.total.toLocaleString()} icon="shop" />
+        <StatCard title="VISITED THIS WEEK" value={stats.visitedThisWeek.toLocaleString()} icon="calendar" />
       </div>
 
       <div className="rounded-[32px] border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -227,11 +227,11 @@ export default function ShopsPage() {
             <table className="w-full text-left">
                 <thead>
                     <tr className="border-b border-zinc-100 dark:border-zinc-800">
-                        <th className="pb-5 pl-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">SHOP DETAILS</th>
-                        <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">ASSIGNED REPRESENTATIVE</th>
+                        <th className="pb-5 pl-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">SHOP NAME</th>
+                        <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">SALES REP</th>
                         <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">LAST VISIT</th>
                         <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">STATUS</th>
-                        <th className="pb-5 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400">ACTION</th>
+                        <th className="pb-5 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400">OPTION</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/40">
@@ -300,17 +300,6 @@ export default function ShopsPage() {
                 Showing {shopRows.length} of {stats.total} entries
             </p>
             <div className="flex items-center gap-2">
-                <button className="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 text-zinc-400 transition-all hover:bg-zinc-50 dark:border-zinc-800">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-                </button>
-                {[1, 2, 3].map(p => (
-                    <button key={p} className={`h-9 w-9 rounded-xl text-[11px] font-black transition-all ${p === 1 ? 'bg-[#f4a261] text-white shadow-lg shadow-[#f4a261]/20' : 'border border-zinc-100 text-zinc-400 hover:bg-zinc-50 dark:border-zinc-800'}`}>
-                        {p}
-                    </button>
-                ))}
-                <button className="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 text-zinc-400 transition-all hover:bg-zinc-50 dark:border-zinc-800">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-                </button>
             </div>
         </div>
       </div>

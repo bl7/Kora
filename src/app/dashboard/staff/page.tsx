@@ -346,18 +346,18 @@ export default function StaffPage() {
       {/* Attendance Stats */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <StatCard
-          title="currently on clock"
+          title="At Work Now"
           value={currentlyOnClock.toString()}
           icon="timer"
         />
         <StatCard
-          title="late arrivals"
+          title="Late Today"
           value={lateArrivals.toString().padStart(2, '0')}
           subValue="After 09:00 AM"
           icon="alert"
         />
         <StatCard
-          title="total hours today"
+          title="Hours Worked Today"
           value={`${totalHoursStr.replace('.', ',')}h`}
           subValue={`Target: ${(counts.active * 8).toLocaleString()} hrs`}
           icon="clock"
@@ -365,7 +365,7 @@ export default function StaffPage() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Real-time Attendance Logs</h2>
+        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Today&apos;s Attendance</h2>
         <div className="flex items-center gap-3">
           <button className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-xs font-medium text-zinc-700 transition-all hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 3H2l8 9v6l4 2V12l8-9z"/></svg>
@@ -409,7 +409,7 @@ export default function StaffPage() {
           type="text"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Search specific employees by name or department..."
+          placeholder="Search staff by name..."
           className="flex-1 min-w-[300px] rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
         />
         <select
@@ -445,7 +445,7 @@ export default function StaffPage() {
           <table className="w-full text-left text-[11px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
             <thead>
               <tr className="border-b border-zinc-100 dark:border-zinc-800">
-                <th className="px-8 py-5 font-semibold">REPRESENTATIVE</th>
+                <th className="px-8 py-5 font-semibold">STAFF NAME</th>
                 <th className="px-5 py-5 font-semibold">STATUS</th>
                 <th className="px-5 py-5 font-semibold text-center">CLOCK IN</th>
                 <th className="px-5 py-5 font-semibold text-center">CLOCK OUT</th>
@@ -540,21 +540,6 @@ export default function StaffPage() {
               SHOWING 1-{staff.length} OF {counts[tab] ?? 0} EMPLOYEES
             </span>
             <div className="flex gap-1.5">
-              {[1, 2, 3].map(p => (
-                <button
-                  key={p}
-                  className={`h-7 w-7 rounded-lg text-[11px] font-bold border transition-all ${
-                    p === 1 
-                      ? "bg-[#f4a261] border-[#f4a261] text-white" 
-                      : "bg-white border-zinc-200 text-zinc-500 hover:border-zinc-300 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-400"
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-              <button className="h-7 w-7 rounded-lg border border-zinc-200 flex items-center justify-center text-zinc-400 dark:border-zinc-700">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-              </button>
             </div>
           </div>
         </div>

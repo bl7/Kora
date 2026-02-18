@@ -238,10 +238,6 @@ export default function OrdersPage() {
                         className="h-11 w-full rounded-xl border border-zinc-100 bg-zinc-50/50 pl-11 pr-4 text-[11px] font-bold outline-none ring-zinc-500/10 transition-all focus:border-zinc-300 focus:ring-4 dark:border-zinc-800 dark:bg-zinc-800/40 md:w-64"
                     />
                 </div>
-                <button className="flex h-11 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-5 text-[10px] font-black uppercase tracking-widest text-zinc-600 transition-all hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 3H2l8 9v6l4 2V12l8-9z"/></svg>
-                    Filters
-                </button>
             </div>
         </div>
 
@@ -251,10 +247,10 @@ export default function OrdersPage() {
                     <tr className="border-b border-zinc-100 dark:border-zinc-800/60">
                         <th className="pb-5 pl-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">ORDER #</th>
                         <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">CLIENT / SHOP</th>
-                        <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">DATE PLACED</th>
-                        <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400 text-right">TOTAL AMOUNT</th>
+                        <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">DATE</th>
+                        <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400 text-right">TOTAL</th>
                         <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400 text-center">STATUS</th>
-                        <th className="pb-5 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400">ACTION</th>
+                        <th className="pb-5 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400">OPTION</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/40">
@@ -301,15 +297,6 @@ export default function OrdersPage() {
             <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">
                 Showing {filteredOrders.length} of {stats.total} entries
             </p>
-            <div className="flex items-center gap-2">
-                <button className="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 text-zinc-400 transition-all hover:bg-zinc-50 dark:border-zinc-800">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-                </button>
-                <button className="h-9 w-9 rounded-xl bg-[#f4a261] text-[11px] font-black text-white shadow-lg">1</button>
-                <button className="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 text-zinc-400 transition-all hover:bg-zinc-50 dark:border-zinc-800">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-                </button>
-            </div>
         </div>
       </div>
 

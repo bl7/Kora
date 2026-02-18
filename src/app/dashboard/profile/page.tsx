@@ -71,13 +71,8 @@ export default function ProfilePage() {
   return (
     <div className="space-y-10">
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#f4a261]">
-             <Link href="/dashboard" className="hover:underline">CONSOLE</Link>
-             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6"/></svg>
-             <span className="text-zinc-300">HUB GOVERNANCE</span>
-        </div>
         <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">User Profile</h1>
-        <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Manage your administrative credentials and marketplace license status.</p>
+        <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Manage your profile details and company info.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
@@ -104,58 +99,58 @@ export default function ProfilePage() {
               {editing ? (
                   <form onSubmit={handleSave} className="space-y-6">
                       <div className="space-y-1.5">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Legal Name</label>
+                          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Full Name</label>
                           <input required className={inputClass} value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} />
                       </div>
                       <div className="space-y-1.5">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Administrative Email</label>
+                          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Email Address</label>
                           <input required type="email" className={inputClass} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
                       </div>
                       <div className="space-y-1.5">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Mobile Terminal</label>
+                          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Phone Number</label>
                           <input required className={inputClass} value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
                       </div>
                       <div className="flex gap-4 pt-4">
                           <button type="button" onClick={() => setEditing(false)} className="h-14 flex-1 rounded-2xl border border-zinc-50 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:bg-zinc-50 dark:border-zinc-800">Discard</button>
                           <button disabled={working} className="h-14 flex-1 rounded-2xl bg-[#f4a261] text-[11px] font-black uppercase tracking-widest text-white shadow-xl shadow-orange-500/20">
-                             {working ? "Persisting..." : "Commit Update"}
+                             {working ? "Saving..." : "Save Changes"}
                           </button>
                       </div>
                   </form>
               ) : (
-                  <div className="space-y-8">
-                      <DetailRow label="Strategic Email" value={session.user.email} />
-                      <DetailRow label="Mobile Contact" value={session.user.phone || "Not provided"} />
-                      <DetailRow label="Registered Hub" value={session.company.name} />
-                      <DetailRow label="Hub Location" value={session.company.address || "No secondary address"} />
+                   <div className="space-y-8">
+                      <DetailRow label="Email" value={session.user.email} />
+                      <DetailRow label="Phone" value={session.user.phone || "Not provided"} />
+                      <DetailRow label="Company" value={session.company.name} />
+                      <DetailRow label="Address" value={session.company.address || "No address provided"} />
                   </div>
               )}
           </div>
 
           {/* Subscription Card */}
           <div className="flex flex-col gap-6">
-              <div className="rounded-[40px] border border-zinc-100 bg-white p-10 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                  <h2 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-8">Asset License Status</h2>
+               <div className="rounded-[40px] border border-zinc-100 bg-white p-10 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                  <h2 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-8">Subscription Status</h2>
                   
                   <div className="mb-10 flex items-center justify-between">
-                      <div>
+                       <div>
                           <p className="text-3xl font-black text-zinc-900 dark:text-zinc-100">{daysLeft ?? 0} Days</p>
-                          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">License Remaining</p>
+                          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Days Remaining</p>
                       </div>
-                      <span className={`rounded-full px-4 py-1.5 text-[9px] font-black uppercase tracking-widest ${subscriptionActive ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20" : "bg-rose-50 text-rose-600 dark:bg-rose-900/20"}`}>
-                          {subscriptionActive ? "Licensed" : "License Expired"}
+                       <span className={`rounded-full px-4 py-1.5 text-[9px] font-black uppercase tracking-widest ${subscriptionActive ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20" : "bg-rose-50 text-rose-600 dark:bg-rose-900/20"}`}>
+                          {subscriptionActive ? "Active" : "Expired"}
                       </span>
                   </div>
 
                   <div className="space-y-6">
-                      <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-zinc-500">License Expiration</span>
+                       <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-zinc-500">Expiration Date</span>
                           <span className="text-[11px] font-black text-zinc-900 dark:text-zinc-100">{formatDate(session.company.subscriptionEndsAt)}</span>
                       </div>
                       <div className="space-y-2">
-                          <div className="flex justify-between items-baseline">
-                              <span className="text-[11px] font-bold text-zinc-500">Field Agent Capacity</span>
-                              <span className="text-[11px] font-black text-zinc-900 dark:text-zinc-100">{staffCount} / {totalAllowed} Hubs</span>
+                           <div className="flex justify-between items-baseline">
+                              <span className="text-[11px] font-bold text-zinc-500">Staff Limit</span>
+                              <span className="text-[11px] font-black text-zinc-900 dark:text-zinc-100">{staffCount} / {totalAllowed} Members</span>
                           </div>
                           <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-50 dark:bg-zinc-800">
                               <div className="h-full bg-[#f4a261] transition-all" style={{ width: `${(staffCount / totalAllowed) * 100}%` }} />
@@ -165,9 +160,9 @@ export default function ProfilePage() {
               </div>
 
               <div className="rounded-[40px] border border-transparent bg-indigo-600 p-10 text-white shadow-xl shadow-indigo-500/20">
-                  <h3 className="text-xl font-black mb-2">Need higher capacity?</h3>
-                  <p className="text-sm font-medium text-indigo-100 mb-8 opacity-80">Upgrade your strategic plan to deploy more field agents and unlock advanced marketplace logistics.</p>
-                  <button className="h-14 w-full rounded-2xl bg-white text-[11px] font-black uppercase tracking-widest text-indigo-600 transition-all hover:bg-indigo-50">View Premium Plans</button>
+                   <h3 className="text-xl font-black mb-2">Need a bigger team?</h3>
+                  <p className="text-sm font-medium text-indigo-100 mb-8 opacity-80">Upgrade your plan to add more staff and unlock better features for your business.</p>
+                  <button className="h-14 w-full rounded-2xl bg-white text-[11px] font-black uppercase tracking-widest text-indigo-600 transition-all hover:bg-indigo-50">View Pricing Plans</button>
               </div>
           </div>
       </div>

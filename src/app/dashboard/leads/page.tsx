@@ -84,14 +84,7 @@ export default function LeadsPage() {
   return (
     <div className="space-y-10">
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#f4a261]">
-            <Link href="/dashboard" className="hover:underline">CONSOLE</Link>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6"/></svg>
-            <span className="text-zinc-300">SALES PIPELINE</span>
-          </div>
           <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Leads Tracking</h1>
-        </div>
         <button 
           onClick={() => { setEditingLead(null); setShowModal(true); }}
           className="flex h-14 items-center gap-2 rounded-2xl bg-[#f4a261] px-8 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/20 transition-all hover:brightness-110"
@@ -136,11 +129,11 @@ export default function LeadsPage() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-zinc-50 dark:border-zinc-800/60">
-                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">Prospect Identity</th>
-                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">Communication</th>
-                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">Pipeline Status</th>
-                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">Assigned Hub</th>
-                <th className="pb-5 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400">Governance</th>
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">LEAD NAME</th>
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">CONTACT</th>
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">STATUS</th>
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">ASSIGNED SHOP</th>
+                <th className="pb-5 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400">OPTION</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/40">
@@ -175,12 +168,12 @@ export default function LeadsPage() {
                                 Convert
                             </button>
                         )}
-                        <button 
-                            onClick={() => { setEditingLead(l); setShowModal(true); }}
-                            className="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
-                        >
-                            Modify
-                        </button>
+                            <button 
+                                onClick={() => { setEditingLead(l); setShowModal(true); }}
+                                className="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+                            >
+                                Edit
+                            </button>
                     </div>
                   </td>
                 </tr>
@@ -245,7 +238,7 @@ function LeadModal({ lead, shops, reps, working, onClose, onSubmit }: {
             <div className="w-full max-w-2xl overflow-hidden rounded-[40px] border border-zinc-100 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
                 <div className="flex items-center justify-between border-b border-zinc-50 px-10 py-8 dark:border-zinc-800">
                     <div>
-                        <h3 className="text-xl font-black text-zinc-900 dark:text-zinc-100">{lead ? "Modify Prospect Intelligence" : "Register Prospect"}</h3>
+                        <h3 className="text-xl font-black text-zinc-900 dark:text-zinc-100">{lead ? "Edit Lead Details" : "Add New Lead"}</h3>
                         <p className="text-xs font-medium text-zinc-400 uppercase tracking-widest mt-1">Lead ID #{lead?.id.slice(0, 8) || "NEW"}</p>
                     </div>
                     <button onClick={onClose} className="rounded-xl border border-zinc-100 p-2 text-zinc-400 hover:bg-zinc-50 dark:border-zinc-800">
@@ -256,56 +249,56 @@ function LeadModal({ lead, shops, reps, working, onClose, onSubmit }: {
                 <form onSubmit={e => { e.preventDefault(); onSubmit(formData); }} className="max-h-[70vh] overflow-y-auto p-10">
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Prospect Title</label>
-                            <input required className={inputClass} placeholder="Entity Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Shop Name</label>
+                            <input required className={inputClass} placeholder="Shop Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Decision Maker</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Contact Person</label>
                             <input required className={inputClass} placeholder="Full Name" value={formData.contactName} onChange={e => setFormData({...formData, contactName: e.target.value})} />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Mobile Link</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Phone</label>
                             <input required className={inputClass} placeholder="+977" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Intelligence Email</label>
-                            <input required type="email" className={inputClass} placeholder="prospect@kora.com" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Email</label>
+                            <input required type="email" className={inputClass} placeholder="email@example.com" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
                         </div>
                         <div className="col-span-2 space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Operational Address</label>
-                            <input required className={inputClass} placeholder="Full Location Details" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Address</label>
+                            <input required className={inputClass} placeholder="Full Address" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
                         </div>
                         
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Pipeline Stage</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Status</label>
                             <select className={inputClass} value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
                                 {["new", "contacted", "qualified", "converted", "lost"].map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
                             </select>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Parent Hub (Optional)</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Parent Shop (Optional)</label>
                             <select className={inputClass} value={formData.shopId} onChange={e => setFormData({...formData, shopId: e.target.value})}>
                                 <option value="">Independent</option>
                                 {shops.map((s: Shop) => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Assigned Agent</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Assigned Rep</label>
                             <select className={inputClass} value={formData.assignedRepCompanyUserId} onChange={e => setFormData({...formData, assignedRepCompanyUserId: e.target.value})}>
                                 <option value="">Unassigned</option>
                                 {reps.map((r: Staff) => <option key={r.company_user_id} value={r.company_user_id}>{r.full_name}</option>)}
                             </select>
                         </div>
                         <div className="col-span-2 space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Intelligence Notes</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Notes</label>
                             <textarea className={`${inputClass} h-32 resize-none`} placeholder="Field findings and prospect context..." value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} />
                         </div>
                     </div>
 
                     <div className="mt-10 flex gap-4">
                         <button type="button" onClick={onClose} className="h-14 flex-1 rounded-2xl border border-zinc-100 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:bg-zinc-50 dark:border-zinc-800">Discard</button>
-                        <button disabled={working} className="h-14 flex-1 rounded-2xl bg-[#f4a261] text-[11px] font-black uppercase tracking-widest text-white shadow-xl shadow-orange-500/20">
-                            {working ? "Processing..." : lead ? "Modify Intelligence" : "Deploy Prospect"}
+                         <button disabled={working} className="h-14 flex-1 rounded-2xl bg-[#f4a261] text-[11px] font-black uppercase tracking-widest text-white shadow-xl shadow-orange-500/20">
+                            {working ? "Processing..." : lead ? "Save Changes" : "Save Lead"}
                         </button>
                     </div>
                 </form>

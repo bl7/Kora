@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { useSession } from "./_lib/session-context";
-import type { StaffListResponse, ShopListResponse, LeadListResponse, OrderListResponse, Order, Staff, Lead } from "./_lib/types";
+import type { StaffListResponse, ShopListResponse, LeadListResponse, OrderListResponse, Order, Staff, Lead, VisitListResponse, TaskListResponse } from "./_lib/types";
 import Link from "next/link";
 
 function StatCard({ label, value, icon, suffix, color = "orange" }: { label: string; value: number | string; icon: React.ReactNode; suffix?: string; color?: "orange" | "indigo" | "emerald" | "blue" }) {
@@ -37,30 +37,31 @@ export default function DashboardPage() {
     activeReps: 0,
     totalStaff: 0,
     newLeads: 0,
-    ordersToday: 0,
-    totalRevenue: 0,
+    totalShops: 0,
+    visitsToday: 0,
   });
 
   const { data: staffData } = useSWR<StaffListResponse>("/api/manager/staff", fetcher);
   const { data: shopsData } = useSWR<ShopListResponse>("/api/manager/shops", fetcher);
   const { data: leadsData } = useSWR<LeadListResponse>("/api/manager/leads", fetcher);
   const { data: ordersData } = useSWR<OrderListResponse>("/api/manager/orders", fetcher);
+  const { data: visitsData } = useSWR<VisitListResponse>("/api/manager/visits", fetcher);
 
   useEffect(() => {
-    if (staffData && shopsData && leadsData && ordersData) {
+    if (staffData && shopsData && leadsData && ordersData && visitsData) {
       const activeReps = staffData.staff?.filter((s: Staff) => s.role === "rep").length || 0;
       const totalStaff = staffData.counts?.active || 0;
       const newLeads = leadsData.leads?.filter((l: Lead) => l.status === "new").length || 0;
+      const totalShops = shopsData.shops?.length || 0;
       
       const today = new Date().toISOString().split('T')[0];
-      const ordersToday = ordersData.orders?.filter((o: Order) => o.created_at?.startsWith(today!)).length || 0;
-      const totalRevenue = ordersData.orders?.reduce((acc: number, o: Order) => acc + (parseFloat(o.total_amount) || 0), 0) || 0;
+      const visitsToday = visitsData.visits?.filter((v: any) => v.started_at?.startsWith(today!)).length || 0;
 
-      setStats({ activeReps, totalStaff, newLeads, ordersToday, totalRevenue });
+      setStats({ activeReps, totalStaff, newLeads, totalShops, visitsToday });
     }
-  }, [staffData, shopsData, leadsData, ordersData]);
+  }, [staffData, shopsData, leadsData, ordersData, visitsData]);
 
-  const loading = !staffData || !shopsData || !leadsData || !ordersData;
+  const loading = !staffData || !shopsData || !leadsData || !ordersData || !visitsData;
 
   if (loading) {
     return (
@@ -78,8 +79,8 @@ export default function DashboardPage() {
   return (
     <div className="space-y-10 pb-12">
       <div className="flex flex-col gap-2">
-        <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Operational Overview</h1>
-        <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Strategic snapshot of your field assets and marketplace performance.</p>
+        <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Dashboard Summary</h1>
+        <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">A quick look at your shops, field staff, and recent work.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -90,24 +91,25 @@ export default function DashboardPage() {
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>} 
         />
         <StatCard 
-          label="Conversion Engine" 
+          label="New Leads" 
           value={stats.newLeads} 
           suffix="Leads"
           color="indigo"
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>} 
         />
         <StatCard 
-          label="Logistical Flow" 
-          value={stats.ordersToday} 
-          suffix="Orders"
+          label="Total Shops" 
+          value={stats.totalShops} 
+          suffix="Shops"
           color="emerald"
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>} 
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>} 
         />
         <StatCard 
-          label="Revenue Pipeline" 
-          value={`$${(stats.totalRevenue / 1000).toFixed(1)}k`} 
+          label="Today's Visits" 
+          value={stats.visitsToday} 
+          suffix="Visits"
           color="blue"
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>} 
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2l3 6 7.5 1-5.5 5.5 1.5 7.5-6.5-3.5-6.5 3.5 1.5-7.5-5.5-5.5 7.5-1 3-6z"/></svg>} 
         />
       </div>
 
@@ -115,8 +117,8 @@ export default function DashboardPage() {
         {/* Recent Activity */}
         <div className="lg:col-span-2 space-y-6 rounded-[40px] border border-zinc-100 bg-white p-10 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <div className="flex items-center justify-between">
-                <h2 className="text-xl font-black text-zinc-900 dark:text-zinc-100">Live Logistics Feed</h2>
-                <Link href="/dashboard/orders" className="text-[11px] font-black uppercase tracking-widest text-[#f4a261] hover:underline">View All Movements</Link>
+                <h2 className="text-xl font-black text-zinc-900 dark:text-zinc-100">Recent Orders</h2>
+                <Link href="/dashboard/orders" className="text-[11px] font-black uppercase tracking-widest text-[#f4a261] hover:underline">View All Orders</Link>
             </div>
             
             <div className="space-y-4">
@@ -145,20 +147,20 @@ export default function DashboardPage() {
         {/* Quick Actions */}
         <div className="space-y-8">
             <div className="rounded-[40px] bg-[#f4a261] p-10 text-white shadow-xl shadow-orange-500/20">
-                <h3 className="text-2xl font-black leading-tight">Fast Deployment</h3>
-                <p className="mt-4 text-sm font-medium opacity-90">Instantly deploy new directives to your field agents or onboard new marketplace assets.</p>
+                <h3 className="text-2xl font-black leading-tight">Quick Actions</h3>
+                <p className="mt-4 text-sm font-medium opacity-90">Quickly assign work to your team or add a new shop to the map.</p>
                 <div className="mt-10 space-y-3">
                     <Link href="/dashboard/tasks" className="flex h-14 w-full items-center justify-center rounded-2xl bg-white text-[11px] font-black uppercase tracking-widest text-[#f4a261] transition-transform hover:scale-[1.02]">
-                        New Field Directive
+                        Add New Task
                     </Link>
                     <Link href="/dashboard/shops" className="flex h-14 w-full items-center justify-center rounded-2xl bg-white/20 text-[11px] font-black uppercase tracking-widest text-white backdrop-blur-md transition-transform hover:scale-[1.02]">
-                        Register Entity
+                        Add New Shop
                     </Link>
                 </div>
             </div>
 
             <div className="rounded-[40px] border border-zinc-100 bg-white p-10 dark:border-zinc-800 dark:bg-zinc-900">
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Hub Utilization</h3>
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Team Capacity</h3>
                 <div className="mt-6 flex items-baseline gap-2">
                     <span className="text-4xl font-black text-zinc-900 dark:text-zinc-100">{stats.totalStaff}</span>
                     <span className="text-lg font-bold text-zinc-400">/ {(session.company.staffLimit ?? 5) + 1}</span>
@@ -166,7 +168,7 @@ export default function DashboardPage() {
                 <div className="mt-6 h-3 w-full overflow-hidden rounded-full bg-zinc-50 dark:bg-zinc-800">
                     <div className="h-full bg-[#f4a261] transition-all" style={{ width: `${(stats.totalStaff / ((session.company.staffLimit ?? 5) + 1)) * 100}%` }} />
                 </div>
-                <p className="mt-4 text-[11px] font-medium text-zinc-500">Your organization is currently operating at {(stats.totalStaff / ((session.company.staffLimit ?? 5) + 1) * 100).toFixed(1)}% of hub capacity.</p>
+                <p className="mt-4 text-[11px] font-medium text-zinc-500">You have used {(stats.totalStaff / ((session.company.staffLimit ?? 5) + 1) * 100).toFixed(1)}% of your team limit.</p>
             </div>
         </div>
       </div>
