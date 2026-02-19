@@ -259,7 +259,7 @@ export default function OrdersPage() {
                             <td className="py-6">
                                 <div>
                                     <p className="text-[13px] font-black text-zinc-900 dark:text-zinc-100">{o.shop_name || o.lead_name || "Direct Sale"}</p>
-                                    <p className="text-[11px] font-medium text-zinc-400">{o.placed_by_name || "Field Agent"}</p>
+                                    <p className="text-[11px] font-medium text-zinc-400">{o.placed_by_name || "Field Agent"} • {o.items_count || 0} items</p>
                                 </div>
                             </td>
                             <td className="py-6">
@@ -541,6 +541,11 @@ function OrderDetailsDrawer({ orderId, onClose, mutateOrders }: { orderId: strin
                                     </span>
                                 </div>
                             ))}
+                            {(!order.items || order.items.length === 0) && (
+                                <div className="py-6 text-center border-2 border-dashed border-zinc-100 rounded-2xl dark:border-zinc-800">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-300">No products listed in this order</p>
+                                </div>
+                            )}
                         </div>
                         <div className="mt-6 border-t border-zinc-100 pt-6 flex justify-end dark:border-zinc-800">
                             <div className="text-right">

@@ -58,6 +58,8 @@ export type Shop = {
   operating_hours: string | null;
   preferred_visit_days: string | null;
   payment_status: string | null;
+  region_id: string | null;
+  region_name?: string | null;
 };
 
 export type StaffListResponse = {
@@ -66,7 +68,7 @@ export type StaffListResponse = {
   staff?: Staff[];
   counts?: StaffCounts;
 };
-export type ShopListResponse = { ok: boolean; error?: string; shops?: Shop[] };
+export type ShopListResponse = { ok: boolean; error?: string; shops?: Shop[]; total?: number };
 
 export type ShopAssignment = {
   id: string;
@@ -155,6 +157,16 @@ export type Visit = {
   created_at: string;
   shop_name: string;
   rep_name: string;
+  is_verified?: boolean;
+  distance_m?: number | null;
+  verification_method?: string | null;
+  gps_accuracy_m?: number | null;
+  exception_reason?: string | null;
+  exception_note?: string | null;
+  approved_by_manager_id?: string | null;
+  approved_at?: string | null;
+  flagged_by_manager_id?: string | null;
+  manager_note?: string | null;
 };
 
 export type VisitListResponse = {
@@ -200,4 +212,22 @@ export type ProductListResponse = {
   ok: boolean;
   error?: string;
   products?: Product[];
+  total?: number;
+};
+
+export type CoverageReportItem = {
+  rep_id: string;
+  rep_name: string;
+  total_assigned: number;
+  shops_visited: number;
+  visit_count: number;
+  orders_count: number;
+  total_sales: number;
+  coverage_percentage: number;
+};
+
+export type CoverageReportResponse = {
+  ok: boolean;
+  error?: string;
+  report?: CoverageReportItem[];
 };

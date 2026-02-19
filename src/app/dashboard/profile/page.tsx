@@ -162,12 +162,6 @@ export default function ProfilePage() {
                       </div>
                   </div>
               </div>
-
-              <div className="rounded-[40px] border border-transparent bg-indigo-600 p-10 text-white shadow-xl shadow-indigo-500/20">
-                   <h3 className="text-xl font-black mb-2">Need a bigger team?</h3>
-                  <p className="text-sm font-medium text-indigo-100 mb-8 opacity-80">Upgrade your plan to add more staff and unlock better features for your business.</p>
-                  <button className="h-14 w-full rounded-2xl bg-white text-[11px] font-black uppercase tracking-widest text-indigo-600 transition-all hover:bg-indigo-50">View Pricing Plans</button>
-              </div>
           </div>
       </div>
     </div>

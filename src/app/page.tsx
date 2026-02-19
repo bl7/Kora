@@ -159,39 +159,10 @@ export default function Home() {
           <div className="relative mx-auto mt-12 h-[90vh] w-full overflow-hidden">
             <div className="relative h-full w-full pt-[60px] pb-[60px]">
               <div
-                className="absolute left-1/2 top-[10%] z-10 h-[28vh] w-[min(56vw,100%)] -translate-x-1/2 rounded-[999px] blur-[40px]"
-                style={{
-                  background:
-                    "radial-gradient(ellipse at center, rgba(220,20,60,0.55) 0%, rgba(220,20,60,0.2) 45%, rgba(220,20,60,0) 75%)",
-                }}
-              />
-              <div
-                className="absolute left-[30%] top-[42%] z-10 h-[30vh] w-[min(24vw,100%)] rounded-[999px] blur-[45px]"
-                style={{
-                  background:
-                    "radial-gradient(ellipse at center, rgba(220,20,60,0.38) 0%, rgba(220,20,60,0) 72%)",
-                }}
-              />
-              <div
-                className="absolute right-[30%] top-[42%] z-10 h-[30vh] w-[min(24vw,100%)] rounded-[999px] blur-[45px]"
-                style={{
-                  background:
-                    "radial-gradient(ellipse at center, rgba(0,56,147,0.35) 0%, rgba(0,56,147,0) 72%)",
-                }}
-              />
-              <div
-                className="absolute left-1/2 top-[33%] z-10 h-[46vh] w-[min(46vw,100%)] -translate-x-1/2 rounded-[999px] opacity-80"
+                className="absolute left-1/2 top-[33%] z-10 h-[46vh] w-[min(46vw,100%)] -translate-x-1/2 rounded-[999px] opacity-20"
                 style={{
                   backgroundImage:
-                    "radial-gradient(circle at 50% 38%, rgba(220,20,60,0.28), rgba(220,20,60,0) 58%), radial-gradient(circle at 50% 63%, rgba(0,56,147,0.26), rgba(0,56,147,0) 60%), repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,0.14) 0 2px, rgba(255,255,255,0) 2px 10px)",
-                  filter: "blur(1px)",
-                }}
-              />
-              <div
-                className="absolute bottom-[6%] left-1/2 z-10 h-[26vh] w-[min(56vw,100%)] -translate-x-1/2 rounded-[999px] opacity-90 blur-[45px]"
-                style={{
-                  background:
-                    "radial-gradient(ellipse at center, rgba(0,56,147,0.5) 0%, rgba(0,56,147,0.2) 38%, rgba(220,20,60,0.12) 58%, rgba(0,56,147,0) 86%)",
+                    "radial-gradient(circle at 50% 50%, rgba(0,0,0,0.1) 0 2px, rgba(0,0,0,0) 2px 10px)",
                 }}
               />
               <Image
@@ -205,35 +176,33 @@ export default function Home() {
           </div>
         </section>
 
-        <ScrollSection className="mt-28 text-center">
-          <h2 className={`${displaySerif.className} text-4xl leading-tight sm:text-5xl`}>
-            From first visit,
-            <br />
-            to final order.
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-sm text-zinc-600 dark:text-zinc-400">
-            Everything a field rep needs, arrival detection, visit logs, lead capture, and order submission.
-          </p>
-          <div className="mt-7 grid gap-4 md:grid-cols-3">
-            <InfoCard
-              title="Visits"
-              subtitle="Verified visits, automatically."
-              description="SalesSuite detects arrival using geofencing, logs time on site, and records outcomes, notes, and photos."
-              footer="Less guessing, more accountability."
-              delay="0ms"
+
+        {/* Executive Features Showcase */}
+        <ScrollSection className="mt-32 px-4">
+          <div className="text-center space-y-6">
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-zinc-400">Institutional Visibility</p>
+            <h2 className={`${displaySerif.className} text-[clamp(2.5rem,6vw,5rem)] leading-[0.9] tracking-tight text-zinc-900 dark:text-zinc-100`}>
+              The ground-truth for 
+              <br />
+              field operations.
+            </h2>
+            <p className="mx-auto max-w-2xl text-lg leading-relaxed text-zinc-500 dark:text-zinc-400">
+              SalesSuite provides the verified data required to optimize regional territories, monitor visit integrity, and scale high-performance sales units.
+            </p>
+          </div>
+
+          <div className="mt-20 grid gap-12 md:grid-cols-3 border-t border-zinc-100 pt-16 dark:border-zinc-800/50">
+            <FeatureItem 
+              title="Operational Integrity"
+              desc="Deep geofence integration ensures reps are physically present at shop locations, eliminating reporting ambiguity and verifying field presence."
             />
-            <InfoCard
-              title="Leads"
-              subtitle="Capture new shops in seconds."
-              description="Add a lead with name, contact, location, and notes. Convert to a shop when you're ready and start capturing orders there."
-              delay="100ms"
+            <FeatureItem 
+              title="Market Expansion"
+              desc="Empower your team to capture new leads in seconds. Log metadata, location, and requirements instantly, converting prospects to active accounts seamlessly."
             />
-            <InfoCard
-              title="Orders"
-              subtitle="Fast order capture with totals."
-              description="Build an order with items and quantities, see the grand total, then submit to back office in one tap."
-              footer="Exports available for easy processing."
-              delay="200ms"
+            <FeatureItem 
+              title="Strategic Oversight"
+              desc="Convert field activity into actionable intelligence. Monitor coverage parity, reassign territories dynamically, and benchmark performance across regional units."
             />
           </div>
         </ScrollSection>
@@ -265,17 +234,6 @@ export default function Home() {
           </p>
         </ScrollSection>
 
-        <ScrollSection className="mt-16 rounded-[2rem] bg-white/70 px-6 py-10 text-center dark:bg-zinc-900/70">
-          <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">Coverage</p>
-          <h3 className={`${displaySerif.className} mt-2 text-4xl leading-tight`}>
-            Coverage and performance,
-            <br />
-            all in one place.
-          </h3>
-          <p className="mx-auto mt-3 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
-            See visits per rep, shops covered vs missed, new leads captured, and orders submitted, by day and territory. Assign and reassign reps to shops as routes change.
-          </p>
-        </ScrollSection>
 
         <ScrollSection className="mt-16 rounded-[2rem] bg-[#ebe8f2] px-5 py-10 dark:bg-zinc-900">
           <h3 className={`${displaySerif.className} text-center text-4xl leading-tight`}>
@@ -440,25 +398,6 @@ export default function Home() {
   );
 }
 
-function InfoCard(props: { title: string; subtitle: string; description: string; footer?: string; delay?: string }) {
-  const { ref, isVisible } = useScrollAnimation();
-  return (
-    <div
-      ref={ref}
-      className={`rounded-2xl border border-zinc-200 bg-white p-5 text-left shadow-sm transition-all duration-500 hover:shadow-md hover:-translate-y-1 dark:border-zinc-700 dark:bg-zinc-800 ${
-        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-      }`}
-      style={{ transitionDelay: props.delay || "0ms" }}
-    >
-      <p className="text-4xl font-semibold text-zinc-900 dark:text-zinc-100">{props.title}</p>
-      <p className="mt-2 text-xl font-serif text-zinc-900 dark:text-zinc-100">{props.subtitle}</p>
-      <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{props.description}</p>
-      {props.footer && (
-        <p className="mt-3 text-xs font-medium text-zinc-500 dark:text-zinc-400">{props.footer}</p>
-      )}
-    </div>
-  );
-}
 
 function QuoteCard(props: { quote: string; author: string; delay?: string }) {
   const { ref, isVisible } = useScrollAnimation();
@@ -657,6 +596,18 @@ function FooterLinks(props: { title: string; links: string[] }) {
           <li key={item}>{item}</li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+function FeatureItem({ title, desc }: { title: string; desc: string }) {
+  return (
+    <div className="space-y-4">
+      <div className="h-0.5 w-8 bg-zinc-900 dark:bg-zinc-100" />
+      <div>
+        <h4 className={`${displaySerif.className} text-[22px] font-black leading-tight text-zinc-900 dark:text-zinc-100`}>{title}</h4>
+        <p className="mt-3 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">{desc}</p>
+      </div>
     </div>
   );
 }

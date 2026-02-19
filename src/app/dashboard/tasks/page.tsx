@@ -5,7 +5,7 @@ import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { useSession } from "../_lib/session-context";
 import { useToast } from "../_lib/toast-context";
-import type { Task, TaskListResponse, Shop, ShopListResponse, Lead, LeadListResponse, Staff, StaffListResponse } from "../_lib/types";
+import type { Task, TaskListResponse, Shop, ShopListResponse, Lead, LeadListResponse, Staff, StaffListResponse, ShopAssignmentListResponse, ShopAssignment } from "../_lib/types";
 import Link from "next/link";
 import { Breadcrumbs } from "../_lib/breadcrumbs";
 
@@ -19,6 +19,7 @@ export default function TasksPage() {
   const session = useSession();
   const toast = useToast();
   const [tab, setTab] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"list" | "board">("list");
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -29,6 +30,7 @@ export default function TasksPage() {
   const { data: shopsData } = useSWR<ShopListResponse>("/api/manager/shops", fetcher);
   const { data: leadsData } = useSWR<LeadListResponse>("/api/manager/leads", fetcher);
   const { data: staffData } = useSWR<StaffListResponse>("/api/manager/staff", fetcher);
+  const { data: assignmentsData } = useSWR<ShopAssignmentListResponse>("/api/manager/shop-assignments", fetcher);
 
   const tasks = tasksData?.tasks ?? [];
   const shops = shopsData?.shops ?? [];
@@ -42,6 +44,9 @@ export default function TasksPage() {
       const matchTab = tab === "all" || t.status === tab;
       const matchRep = repFilter === "all" || t.rep_company_user_id === repFilter;
       return matchSearch && matchTab && matchRep;
+    }).map((t: Task) => {
+        const isOverdue = t.status !== "completed" && t.deadline && new Date(t.deadline) < new Date();
+        return { ...t, isOverdue };
     });
   }, [tasks, search, tab, repFilter]);
 
@@ -51,10 +56,28 @@ export default function TasksPage() {
     completed: tasks.filter((t: Task) => t.status === "completed").length,
   }), [tasks]);
 
-  async function handleSave(payload: any) {
+  async function handleSave(formData: any) {
     setWorking(true);
     const url = editingTask ? `/api/manager/tasks/${editingTask.id}` : "/api/manager/tasks";
     const method = editingTask ? "PATCH" : "POST";
+    
+    const payload: any = {};
+    if (formData.title) payload.title = formData.title;
+    if (formData.description) payload.description = formData.description;
+    
+    // For update, allow status change. For create, it's default pending.
+    if (editingTask && formData.status) payload.status = formData.status;
+    
+    // Dates
+    if (formData.deadline) {
+        payload.dueAt = new Date(formData.deadline).toISOString();
+    }
+    
+    // Relations - only include if set
+    if (formData.repCompanyUserId) payload.repCompanyUserId = formData.repCompanyUserId;
+    if (formData.shopId && formData.shopId !== "") payload.shopId = formData.shopId;
+    if (formData.leadId && formData.leadId !== "") payload.leadId = formData.leadId;
+
     const res = await fetch(url, {
       method,
       headers: { "content-type": "application/json" },
@@ -68,7 +91,7 @@ export default function TasksPage() {
         setEditingTask(null);
         mutate();
     } else {
-        toast.error(data.error || "Deployment failed");
+        toast.error(data.message || data.error || "Deployment failed");
     }
   }
 
@@ -77,6 +100,21 @@ export default function TasksPage() {
     const data = await res.json();
     if (data.ok) {
         toast.success("Directive completed.");
+        mutate();
+    } else {
+        toast.error(data.error || "Update failed");
+    }
+  }
+
+  async function onReopenTask(t: Task) {
+    const res = await fetch(`/api/manager/tasks/${t.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ status: "pending" }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+        toast.success("Directive reopened.");
         mutate();
     } else {
         toast.error(data.error || "Update failed");
@@ -103,9 +141,9 @@ export default function TasksPage() {
       </div>
 
       <div className="rounded-[40px] border border-zinc-100 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
            <div className="flex items-center gap-1 rounded-2xl bg-zinc-50 p-1 dark:bg-zinc-800/60">
-              {["all", "pending", "completed", "overdue"].map(t => (
+              {["all", "pending", "completed"].map(t => (
                 <button 
                   key={t}
                   onClick={() => setTab(t)}
@@ -117,83 +155,164 @@ export default function TasksPage() {
            </div>
            
            <div className="flex items-center gap-3">
+               <div className="flex items-center gap-1 rounded-xl bg-zinc-50 p-1 dark:bg-zinc-800/60">
+                  <button onClick={() => setViewMode("list")} className={`rounded-lg p-2 ${viewMode === "list" ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100" : "text-zinc-400"}`}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                  </button>
+                  <button onClick={() => setViewMode("board")} className={`rounded-lg p-2 ${viewMode === "board" ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100" : "text-zinc-400"}`}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                  </button>
+               </div>
+
                <select 
                  value={repFilter} 
                  onChange={e => setRepFilter(e.target.value)}
-                 className="h-11 rounded-xl border border-zinc-50 bg-zinc-50/50 px-4 text-[11px] font-bold text-zinc-500 outline-none transition-all focus:border-zinc-200 dark:border-zinc-800 dark:bg-zinc-800/40"
+                 className="h-10 rounded-xl border border-zinc-100 bg-zinc-50/50 px-4 text-[10px] font-bold text-zinc-500 outline-none transition-all focus:border-zinc-200 dark:border-zinc-800 dark:bg-zinc-800/40"
                >
                   <option value="all">All Staff</option>
                   {reps.map(r => <option key={r.company_user_id} value={r.company_user_id}>{r.full_name}</option>)}
                </select>
-               <div className="relative">
-                  <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+               <div className="relative hidden md:block">
+                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                   <input 
                     type="text" 
                     placeholder="Search tasks..." 
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    className="h-11 w-full rounded-xl border border-zinc-50 bg-zinc-50/50 pl-11 pr-4 text-[11px] font-bold outline-none transition-all focus:border-zinc-200 dark:border-zinc-800 dark:bg-zinc-800/40 md:w-64"
+                    className="h-10 w-64 rounded-xl border border-zinc-100 bg-zinc-50/50 pl-10 pr-4 text-[10px] font-bold outline-none transition-all focus:border-zinc-200 dark:border-zinc-800 dark:bg-zinc-800/40"
                   />
                </div>
            </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-zinc-50 dark:border-zinc-800/60">
-                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">TASK NAME</th>
-                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">SALES REP</th>
-                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">LINKED TO</th>
-                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">STATUS</th>
-                <th className="pb-5 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400">OPTIONS</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/40">
-              {filteredTasks.map((t) => (
-                <tr key={t.id} className="group hover:bg-zinc-50/30 dark:hover:bg-zinc-800/20">
-                  <td className="py-6">
-                    <div className="max-w-xs">
-                      <p className="text-[13px] font-black text-zinc-900 dark:text-zinc-100">{t.title}</p>
-                      <p className="mt-0.5 truncate text-[11px] font-medium text-zinc-400">{t.description}</p>
-                    </div>
-                  </td>
-                  <td className="py-6">
-                    <p className="text-[12px] font-bold text-zinc-700 dark:text-zinc-300">{t.rep_name || "Unassigned"}</p>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mt-0.5">Role: Field Agent</p>
-                  </td>
-                  <td className="py-6">
-                    <p className="text-[12px] font-black text-zinc-900 dark:text-zinc-100">{t.shop_name || t.lead_name || "General"}</p>
-                    <p className="text-[10px] font-bold text-[#f4a261] uppercase tracking-widest mt-0.5">{t.shop_name ? "Shop" : t.lead_name ? "Lead" : "None"}</p>
-                  </td>
-                  <td className="py-6">
-                    <span className={`inline-flex rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-widest ${STATUS_COLORS[t.status] || "bg-zinc-100 text-zinc-600"}`}>
-                      {t.status}
-                    </span>
-                  </td>
-                  <td className="py-6 text-right">
-                    <div className="flex items-center justify-end gap-3">
-                        {t.status === "pending" && (
-                            <button 
-                                onClick={() => onMarkComplete(t)}
-                                className="text-[10px] font-black uppercase tracking-widest text-[#f4a261] hover:underline"
-                            >
-                                Resolve
-                            </button>
-                        )}
-                             <button 
-                                onClick={() => { setEditingTask(t); setShowModal(true); }}
-                                className="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
-                            >
-                                Edit
-                            </button>
-                    </div>
-                  </td>
+        {viewMode === "list" ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-zinc-50 dark:border-zinc-800/60">
+                  <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">TASK NAME</th>
+                  <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">DUE DATE</th>
+                  <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">SALES REP</th>
+                  <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">LINKED TO</th>
+                  <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">STATUS</th>
+                  <th className="pb-5 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400">OPTIONS</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/40">
+                {filteredTasks.length === 0 ? (
+                    <tr><td colSpan={6} className="py-12 text-center text-xs font-bold uppercase tracking-widest text-zinc-300">No tasks found</td></tr>
+                ) : filteredTasks.map((t: any) => (
+                  <tr key={t.id} className="group hover:bg-zinc-50/30 dark:hover:bg-zinc-800/20">
+                    <td className="py-6">
+                      <div className="max-w-xs">
+                        <p className={`text-[13px] font-black transition-colors ${t.status === 'completed' ? 'text-zinc-400 line-through' : 'text-zinc-900 dark:text-zinc-100'}`}>{t.title}</p>
+                        <p className="mt-0.5 truncate text-[11px] font-medium text-zinc-400">{t.description}</p>
+                      </div>
+                    </td>
+                    <td className="py-6">
+                        {t.deadline ? (
+                            <div className={`inline-flex flex-col rounded-lg px-2 py-1 ${t.isOverdue ? "bg-rose-50 text-rose-600 dark:bg-rose-900/20" : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800"}`}>
+                                <span className="text-[10px] font-black uppercase tracking-widest">
+                                    {new Date(t.deadline).toLocaleDateString()} 
+                                </span>
+                                <span className="text-[9px] font-medium opacity-80">
+                                    {new Date(t.deadline).toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' })}
+                                </span>
+                            </div>
+                        ) : <span className="text-zinc-300 text-[10px] font-bold uppercase">No Date</span>}
+                    </td>
+                    <td className="py-6">
+                        <div className="flex items-center gap-2">
+                             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#f4a261]/10 text-[9px] font-black text-[#f4a261]">
+                                {t.rep_name?.charAt(0) || "?"}
+                             </div>
+                             <div>
+                                <p className="text-[12px] font-bold text-zinc-700 dark:text-zinc-300">{t.rep_name || "Unassigned"}</p>
+                             </div>
+                        </div>
+                    </td>
+                    <td className="py-6">
+                      <p className="text-[12px] font-black text-zinc-900 dark:text-zinc-100">{t.shop_name || t.lead_name || "General"}</p>
+                      <p className="text-[10px] font-bold text-[#f4a261] uppercase tracking-widest mt-0.5">{t.shop_name ? "Shop" : t.lead_name ? "Lead" : "None"}</p>
+                    </td>
+                    <td className="py-6">
+                      <span className={`inline-flex rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-widest ${t.isOverdue ? STATUS_COLORS.overdue : STATUS_COLORS[t.status] || "bg-zinc-100 text-zinc-600"}`}>
+                        {t.isOverdue ? "Overdue" : t.status}
+                      </span>
+                    </td>
+                    <td className="py-6 text-right">
+                      <div className="flex items-center justify-end gap-3">
+                          {t.status === "pending" && (
+                              <button 
+                                  onClick={() => onMarkComplete(t)}
+                                  className="text-[10px] font-black uppercase tracking-widest text-[#f4a261] hover:underline"
+                              >
+                                  Resolve
+                              </button>
+                          )}
+                          {t.status === "completed" && session?.user?.role !== "rep" && (
+                              <button 
+                                  onClick={() => onReopenTask(t)}
+                                  className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:underline"
+                              >
+                                  Reopen
+                              </button>
+                          )}
+                               <button 
+                                  onClick={() => { setEditingTask(t); setShowModal(true); }}
+                                  className="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+                              >
+                                  Edit
+                              </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {/* Pending Column */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between rounded-2xl bg-blue-50 p-4 dark:bg-blue-900/10">
+                        <span className="text-xs font-black uppercase tracking-widest text-blue-700 dark:text-blue-400">To Do</span>
+                        <span className="rounded-full bg-white px-2 py-1 text-[10px] font-bold text-blue-700 dark:bg-blue-900 dark:text-blue-300">{filteredTasks.filter((t: any) => t.status === 'pending' && !t.isOverdue).length}</span>
+                    </div>
+                    <div className="space-y-3">
+                        {filteredTasks.filter((t: any) => t.status === 'pending' && !t.isOverdue).map((t: any) => (
+                             <KanbanCard key={t.id} task={t} onEdit={() => { setEditingTask(t); setShowModal(true); }} onComplete={() => onMarkComplete(t)} onReopen={() => onReopenTask(t)} />
+                        ))}
+                    </div>
+                </div>
+
+                {/* Overdue Column */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between rounded-2xl bg-rose-50 p-4 dark:bg-rose-900/10">
+                        <span className="text-xs font-black uppercase tracking-widest text-rose-700 dark:text-rose-400">Overdue / Critical</span>
+                        <span className="rounded-full bg-white px-2 py-1 text-[10px] font-bold text-rose-700 dark:bg-rose-900 dark:text-rose-300">{filteredTasks.filter((t: any) => t.isOverdue).length}</span>
+                    </div>
+                    <div className="space-y-3">
+                        {filteredTasks.filter((t: any) => t.isOverdue).map((t: any) => (
+                             <KanbanCard key={t.id} task={t} onEdit={() => { setEditingTask(t); setShowModal(true); }} onComplete={() => onMarkComplete(t)} onReopen={() => onReopenTask(t)} />
+                        ))}
+                    </div>
+                </div>
+
+                {/* Completed Column */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between rounded-2xl bg-emerald-50 p-4 dark:bg-emerald-900/10">
+                        <span className="text-xs font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-400">Completed</span>
+                        <span className="rounded-full bg-white px-2 py-1 text-[10px] font-bold text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">{filteredTasks.filter((t: any) => t.status === 'completed').length}</span>
+                    </div>
+                    <div className="space-y-3">
+                        {filteredTasks.filter((t: any) => t.status === 'completed').map((t: any) => (
+                             <KanbanCard key={t.id} task={t} onEdit={() => { setEditingTask(t); setShowModal(true); }} onComplete={() => onMarkComplete(t)} onReopen={() => onReopenTask(t)} />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        )}
       </div>
 
       {showModal && (
@@ -202,6 +321,7 @@ export default function TasksPage() {
             shops={shops} 
             leads={leads} 
             reps={reps} 
+            assignments={assignmentsData?.assignments || []}
             working={working}
             onClose={() => { setShowModal(false); setEditingTask(null); }}
             onSubmit={handleSave}
@@ -209,6 +329,50 @@ export default function TasksPage() {
       )}
     </div>
   );
+}
+
+ function KanbanCard({ task, onEdit, onComplete, onReopen }: { task: any; onEdit: () => void; onComplete: () => void; onReopen: () => void }) {
+    const session = useSession();
+    return (
+        <div className="rounded-2xl border border-zinc-100 bg-zinc-50/50 p-4 transition-all hover:bg-white hover:shadow-md dark:border-zinc-800 dark:bg-zinc-800/30 dark:hover:bg-zinc-800">
+            <div className="mb-3 flex items-start justify-between">
+                <span className={`inline-flex rounded-lg px-2 py-1 text-[8px] font-black uppercase tracking-widest ${task.isOverdue ? "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400" : "bg-zinc-200 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400"}`}>
+                    {task.isOverdue ? "Overdue" : task.status}
+                </span>
+                <div className="flex gap-2">
+                     {task.status === "pending" && (
+                         <button onClick={onComplete} className="text-zinc-400 hover:text-[#f4a261]">
+                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                         </button>
+                     )}
+                     {task.status === "completed" && session?.user?.role !== "rep" && (
+                         <button onClick={onReopen} className="text-zinc-400 hover:text-indigo-600">
+                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M2.5 2v6h6M2.66 15.57a10 10 0 1 0 .57-8.38"/></svg>
+                         </button>
+                     )}
+                     <button onClick={onEdit} className="text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100">
+                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                     </button>
+                </div>
+            </div>
+            <h4 className={`text-sm font-black ${task.status === 'completed' ? 'text-zinc-400 line-through' : 'text-zinc-900 dark:text-zinc-100'}`}>{task.title}</h4>
+            <p className="mt-1 text-[11px] font-medium text-zinc-500 line-clamp-2">{task.description}</p>
+            
+            <div className="mt-4 flex items-center justify-between border-t border-zinc-100 pt-3 dark:border-zinc-800/50">
+                <div className="flex items-center gap-2">
+                     <div className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-50 text-[8px] font-black text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400">
+                         {task.rep_name?.charAt(0) || "?"}
+                     </div>
+                     <span className="text-[10px] font-bold text-zinc-500">{task.rep_name?.split(' ')[0]}</span>
+                </div>
+                {task.deadline && (
+                    <span className={`text-[10px] font-bold ${task.isOverdue ? "text-rose-500" : "text-zinc-400"}`}>
+                        {new Date(task.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </span>
+                )}
+            </div>
+        </div>
+    );
 }
 
 function StatCardSmall({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
@@ -225,11 +389,12 @@ function StatCardSmall({ label, value, icon }: { label: string; value: number; i
     );
 }
 
-function TaskModal({ task, shops, leads, reps, working, onClose, onSubmit }: { 
+function TaskModal({ task, shops, leads, reps, assignments, working, onClose, onSubmit }: { 
     task?: Task | null; 
     shops: Shop[]; 
     leads: Lead[]; 
     reps: Staff[]; 
+    assignments: ShopAssignment[];
     working: boolean; 
     onClose: () => void; 
     onSubmit: (payload: any) => Promise<void>; 
@@ -243,6 +408,16 @@ function TaskModal({ task, shops, leads, reps, working, onClose, onSubmit }: {
         deadline: task?.deadline ? new Date(task.deadline).toISOString().slice(0, 16) : "",
         status: task?.status || "pending"
     });
+
+    const filteredShops = useMemo(() => {
+        if (!formData.repCompanyUserId) return shops;
+        const assignedShopIds = new Set(
+            assignments
+                .filter(a => a.rep_company_user_id === formData.repCompanyUserId)
+                .map(a => a.shop_id)
+        );
+        return shops.filter(s => assignedShopIds.has(s.id));
+    }, [formData.repCompanyUserId, shops, assignments]);
 
     const inputClass = "w-full rounded-xl border border-zinc-100 bg-zinc-50/50 px-4 py-3 text-[13px] font-medium text-zinc-900 outline-none transition-all focus:border-zinc-200 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-100";
 
@@ -281,12 +456,21 @@ function TaskModal({ task, shops, leads, reps, working, onClose, onSubmit }: {
                             <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Due Date</label>
                             <input required type="datetime-local" className={inputClass} value={formData.deadline} onChange={e => setFormData({...formData, deadline: e.target.value})} />
                         </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Status</label>
+                            <select className={inputClass} value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
+                                <option value="pending">Pending</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="completed">Completed</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
 
                          <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Linked Shop (Optional)</label>
                             <select className={inputClass} value={formData.shopId} onChange={e => { setFormData({...formData, shopId: e.target.value, leadId: ""}); }}>
                                 <option value="">No Shop</option>
-                                {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                {filteredShops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
                         </div>
                         <div className="space-y-1.5">

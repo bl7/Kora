@@ -7,16 +7,43 @@ import { useEffect, useState } from "react";
 import { SessionProvider, useSession } from "./_lib/session-context";
 import { ToastProvider } from "./_lib/toast-context";
 
-const navItems = [
-  { label: "Overview", href: "/dashboard", icon: GridIcon },
-  { label: "Orders", href: "/dashboard/orders", icon: ClipboardIcon },
-  { label: "Leads", href: "/dashboard/leads", icon: TargetIcon },
-  { label: "Tasks", href: "/dashboard/tasks", icon: ChecklistIcon },
-  { label: "Products", href: "/dashboard/products", icon: PackageIcon },
-  { label: "Staff", href: "/dashboard/staff", icon: UsersIcon },
-  { label: "Shops", href: "/dashboard/shops", icon: StoreIcon },
-  { label: "Shop Assignments", href: "/dashboard/assignments", icon: LinkIcon },
-  { label: "Profile", href: "/dashboard/profile", icon: UserIcon },
+type NavItem = { label: string; href: string; icon: React.ComponentType<{ active: boolean }> };
+
+const navGroups: { section: string; items: NavItem[] }[] = [
+  {
+    section: "",
+    items: [
+      { label: "Overview", href: "/dashboard", icon: GridIcon },
+    ]
+  },
+  {
+    section: "Operations",
+    items: [
+      { label: "Orders", href: "/dashboard/orders", icon: ClipboardIcon },
+      { label: "Leads", href: "/dashboard/leads", icon: TargetIcon },
+      { label: "Tasks", href: "/dashboard/tasks", icon: ChecklistIcon },
+    ]
+  },
+  {
+    section: "Field",
+    items: [
+      { label: "Visits", href: "/dashboard/visits", icon: MapPinIcon },
+      { label: "Compliance", href: "/dashboard/compliance", icon: ComplianceIcon },
+      { label: "Coverage", href: "/dashboard/coverage", icon: ChartIcon },
+      { label: "Performance", href: "/dashboard/performance", icon: TrophyIcon },
+    ]
+  },
+  {
+    section: "Admin",
+    items: [
+      { label: "Staff", href: "/dashboard/staff", icon: UsersIcon },
+      { label: "Regions", href: "/dashboard/regions", icon: GlobeIcon },
+      { label: "Shops", href: "/dashboard/shops", icon: StoreIcon },
+      { label: "Assignments", href: "/dashboard/assignments", icon: LinkIcon },
+      { label: "Products", href: "/dashboard/products", icon: PackageIcon },
+      { label: "Profile", href: "/dashboard/profile", icon: UserIcon },
+    ]
+  },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -90,27 +117,34 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
 
-        <nav className="flex-1 space-y-1 px-2 pb-8">
-          {navItems.map((item) => {
-            const active = item.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`relative flex items-center gap-4 rounded-2xl px-6 py-4 text-[14px] font-bold transition-all ${
-                  active
-                    ? "bg-[#f4a261]/5 text-[#f4a261] dark:bg-[#f4a261]/10"
-                    : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-                }`}
-              >
-                {active && <div className="absolute left-0 top-1/2 h-8 w-1.5 -translate-y-1/2 rounded-r-full bg-[#f4a261]" />}
-                <div className={`transition-colors ${active ? "text-[#f4a261]" : "text-zinc-400"}`}>
-                    <item.icon active={active} />
-                </div>
-                {item.label}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto px-2 pb-8">
+          {navGroups.map((group) => (
+            <div key={group.section} className={group.section ? "mt-6" : ""}>
+              {group.section && (
+                <p className="mb-1 px-4 text-[9px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-600">{group.section}</p>
+              )}
+              {group.items.map((item) => {
+                const active = item.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`relative flex items-center gap-4 rounded-2xl px-6 py-3.5 text-[13px] font-bold transition-all ${
+                      active
+                        ? "bg-[#f4a261]/5 text-[#f4a261] dark:bg-[#f4a261]/10"
+                        : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                    }`}
+                  >
+                    {active && <div className="absolute left-0 top-1/2 h-8 w-1.5 -translate-y-1/2 rounded-r-full bg-[#f4a261]" />}
+                    <div className={`transition-colors ${active ? "text-[#f4a261]" : "text-zinc-400"}`}>
+                      <item.icon active={active} />
+                    </div>
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="border-t border-zinc-100 p-6 dark:border-zinc-800">
@@ -255,3 +289,71 @@ function UserIcon({ active }: { active: boolean }) {
   );
 }
 
+
+function ChartIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" className={active ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400 dark:text-zinc-500"}>
+      <line x1="18" y1="20" x2="18" y2="10" />
+      <line x1="12" y1="20" x2="12" y2="4" />
+      <line x1="6" y1="20" x2="6" y2="14" />
+    </svg>
+  );
+}
+
+function MapPinIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" className={active ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400 dark:text-zinc-500"}>
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+}
+
+function AlertIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" className={active ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400 dark:text-zinc-500"}>
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  );
+}
+
+function ShieldIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" className={active ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400 dark:text-zinc-500"}>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  );
+}
+
+function TrophyIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" className={active ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400 dark:text-zinc-500"}>
+      <polyline points="8 21 12 17 16 21" />
+      <line x1="12" y1="17" x2="12" y2="13" />
+      <path d="M7 4H4a2 2 0 0 0-2 2v3a6 6 0 0 0 6 6" />
+      <path d="M17 4h3a2 2 0 0 1 2 2v3a6 6 0 0 1-6 6" />
+      <rect x="7" y="2" width="10" height="11" rx="1" />
+    </svg>
+  );
+}
+
+function ComplianceIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" className={active ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400 dark:text-zinc-500"}>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <polyline points="9 12 11 14 15 10" />
+    </svg>
+  );
+}
+
+function GlobeIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" className={active ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400 dark:text-zinc-500"}>
+      <circle cx="12" cy="12" r="10" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
+  );
+}

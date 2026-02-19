@@ -379,6 +379,8 @@
       "phone": "+9779812345678",
       "email": "ram@downtown.com",
       "address": "Thamel, Kathmandu",
+      "latitude": 27.7172,
+      "longitude": 85.3240,
       "status": "qualified",
       "notes": "Interested in bulk order",
       "converted_at": null,
@@ -413,6 +415,8 @@
   "phone": "+9779812345678",
   "email": "ram@downtown.com",
   "address": "Thamel, Kathmandu",
+  "latitude": 27.7172,
+  "longitude": 85.3240,
   "assignedRepCompanyUserId": "uuid",
   "notes": "Referred by existing customer"
 }
@@ -430,6 +434,8 @@
     "phone": "+9779812345678",
     "email": "ram@downtown.com",
     "address": "Thamel, Kathmandu",
+    "latitude": 27.7172,
+    "longitude": 85.3240,
     "status": "new",
     "assigned_rep_company_user_id": "uuid",
     "notes": "Referred by existing customer",

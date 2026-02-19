@@ -368,14 +368,6 @@ export default function StaffPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Today&apos;s Attendance</h2>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-xs font-medium text-zinc-700 transition-all hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 3H2l8 9v6l4 2V12l8-9z"/></svg>
-            Filters
-          </button>
-          <button className="flex items-center gap-2 rounded-lg bg-[#f4a261] px-4 py-2 text-xs font-medium text-white transition-all hover:brightness-105">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
-          </button>
           {canManage && (
             <button
               type="button"

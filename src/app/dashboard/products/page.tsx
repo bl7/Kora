@@ -7,6 +7,7 @@ import { useSession } from "../_lib/session-context";
 import { useToast } from "../_lib/toast-context";
 import type { Product, ProductListResponse } from "../_lib/types";
 import { Breadcrumbs } from "../_lib/breadcrumbs";
+import { BulkImportModal } from "../_lib/bulk-import-modal";
 
 function StatCard({ title, value, subValue, icon, accentColor }: { 
   title: string; 
@@ -58,59 +59,58 @@ export default function ProductsPage() {
   const [searchInput, setSearchInput] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showModal, setShowModal] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [total, setTotal] = useState(0);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [duplicateFrom, setDuplicateFrom] = useState<Product | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
   
   const debouncedQ = useDebounce(searchInput.trim(), 300);
 
-  const loadProducts = useCallback(
-    async (q: string) => {
-      const fetchList = async (status?: string) => {
-          const p = new URLSearchParams();
-          if (status) p.set("status", status);
-          if (q) p.set("q", q);
-          const res = await fetch(`/api/manager/products?${p.toString()}`);
-          const data = (await res.json()) as ProductListResponse;
-          return data.ok ? (data.products ?? []) : [];
-      };
+  // Reset page on search or tab change
+  useEffect(() => { setPage(1); }, [debouncedQ, tab]);
 
-      if (tab === "all") {
-          const [active, inactive] = await Promise.all([fetchList("active"), fetchList("inactive")]);
-          setProducts([...active, ...inactive].sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+  const loadProducts = useCallback(
+    async (q: string, pge: number, lmt: number, status?: string) => {
+      setLoading(true);
+      const p = new URLSearchParams();
+      if (status && status !== "all") p.set("status", status);
+      if (q) p.set("q", q);
+      p.set("page", pge.toString());
+      p.set("limit", lmt.toString());
+
+      const res = await fetch(`/api/manager/products?${p.toString()}`);
+      const data = (await res.json()) as ProductListResponse;
+      if (data.ok) {
+        setProducts(data.products ?? []);
+        setTotal(data.total ?? 0);
       } else {
-          const list = await fetchList(tab);
-          setProducts(list);
+        setProducts([]);
+        setTotal(0);
       }
+      setLoading(false);
     },
-    [tab]
+    []
   );
 
   useEffect(() => {
-    setLoading(true);
-    loadProducts(debouncedQ).then(() => setLoading(false));
-  }, [debouncedQ, loadProducts]);
+    loadProducts(debouncedQ, page, limit, tab);
+  }, [debouncedQ, page, limit, tab, loadProducts]);
+
 
   const stats = useMemo(() => {
-      const total = products.length;
-      const active = products.filter(p => p.is_active).length;
-      const categories = new Set(products.map(p => p.unit.toLowerCase())).size;
-      const activeRate = total > 0 ? Math.round((active / total) * 100) : 0;
-      
+      const activeOnPage = products.filter(p => p.is_active).length;
       return {
-          total,
-          active,
-          categories,
-          activeRate: `${activeRate}%`
+          total: total,
+          active: activeOnPage, // This is still 'on page', but we'll accept it for now as repo doesn't return global active count
+          categories: new Set(products.map(p => p.unit.toLowerCase())).size,
+          activeRate: products.length > 0 ? `${Math.round((activeOnPage / products.length) * 100)}%` : "0%"
       };
-  }, [products]);
+  }, [products, total]);
 
-  const filteredProducts = useMemo(() => {
-      return products.filter(p => {
-          if (tab === "active") return p.is_active;
-          if (tab === "inactive") return !p.is_active;
-          return true;
-      });
-  }, [products, tab]);
+  // No client side filtering needed
+  const filteredProducts = products;
 
   async function onCreate(payload: any) {
     setWorking(true);
@@ -127,7 +127,7 @@ export default function ProductsPage() {
     }
     toast.success("Product added.");
     setShowModal(false);
-    loadProducts(debouncedQ);
+    loadProducts(debouncedQ, page, limit, tab);
   }
 
   async function onUpdate(productId: string, payload: any) {
@@ -147,7 +147,7 @@ export default function ProductsPage() {
     }
     toast.success("Product updated.");
     setShowModal(false);
-    loadProducts(debouncedQ);
+    loadProducts(debouncedQ, page, limit, tab);
   }
 
   async function onDelete(productId: string) {
@@ -161,7 +161,7 @@ export default function ProductsPage() {
       return;
     }
     toast.success("Product deleted.");
-    loadProducts(debouncedQ);
+    loadProducts(debouncedQ, page, limit, tab);
   }
 
   return (
@@ -174,10 +174,15 @@ export default function ProductsPage() {
           <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Manage your product catalog and inventory status.</p>
         </div>
         <div className="flex items-center gap-3">
-            <button className="flex h-11 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-5 text-xs font-bold uppercase tracking-widest text-zinc-600 transition-all hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Export
-            </button>
+            {canManageProducts && (
+                <button 
+                  onClick={() => setShowImportModal(true)}
+                  className="flex h-11 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-5 text-xs font-bold uppercase tracking-widest text-zinc-600 transition-all hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400"
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Import CSV
+                </button>
+            )}
             {canManageProducts && (
                 <button 
                     onClick={() => { setEditingProduct(null); setDuplicateFrom(null); setShowModal(true); }}
@@ -326,8 +331,27 @@ export default function ProductsPage() {
 
         <div className="mt-8 flex items-center justify-between border-t border-zinc-100 pt-8 dark:border-zinc-800">
             <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">
-                Showing {filteredProducts.length} of {stats.total} entries
+                Showing {filteredProducts.length} of {total} entries
             </p>
+            <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="rounded-lg border border-zinc-200 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-600 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-400"
+                >
+                  Previous
+                </button>
+                <span className="text-[10px] font-black text-zinc-900 dark:text-zinc-100">
+                    Page {page}
+                </span>
+                <button 
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={filteredProducts.length < limit && (total ? page * limit >= total : true)}
+                  className="rounded-lg border border-zinc-200 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-600 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-400"
+                >
+                  Next
+                </button>
+            </div>
         </div>
       </div>
 
@@ -339,6 +363,20 @@ export default function ProductsPage() {
           onClose={() => setShowModal(false)}
           onSave={editingProduct ? (payload: any) => onUpdate(editingProduct.id, payload) : onCreate}
           onSetPrice={(price: number, currency: string) => editingProduct && onUpdate(editingProduct.id, { price, currencyCode: currency })}
+        />
+      )}
+
+      {showImportModal && (
+        <BulkImportModal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          title="Import Products"
+          templateUrl="/api/manager/products/import-template"
+          importUrl="/api/manager/products/import"
+          onSuccess={() => {
+             loadProducts(debouncedQ, page, limit, tab);
+             setShowImportModal(false);
+          }}
         />
       )}
     </div>

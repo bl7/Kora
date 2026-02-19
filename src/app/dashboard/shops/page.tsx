@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef } from "react";
 import { Breadcrumbs } from "../_lib/breadcrumbs";
+import { BulkImportModal } from "../_lib/bulk-import-modal";
 import Link from "next/link";
 import type { 
   Shop, 
@@ -14,7 +15,7 @@ import type {
 } from "../_lib/types";
 import { useSession } from "../_lib/session-context";
 import { useToast } from "../_lib/toast-context";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import { fetcher } from "@/lib/fetcher";
 
 type Rep = { company_user_id: string; full_name: string };
@@ -65,12 +66,27 @@ export default function ShopsPage() {
   const [tab, setTab] = useState<"all" | "visited">("all");
   const [working, setWorking] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [assignShop, setAssignShop] = useState<Shop | null>(null);
+  const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [viewVisitsShop, setViewVisitsShop] = useState<Shop | null>(null);
   const [searchInput, setSearchInput] = useState("");
+  const [page, setPage] = useState(1);
+  const limit = 10;
+  
+  // Debounce search
+  const [debouncedSearch, setDebouncedSearch] = useState(searchInput);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchInput), 500);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  // If search changes, reset page
+  useEffect(() => { setPage(1); }, [debouncedSearch]);
 
   const { data: shopsData, mutate: mutateShops } = useSWR<ShopListResponse>(
-    "/api/manager/shops",
+    `/api/manager/shops?page=${page}&limit=${limit}&q=${encodeURIComponent(debouncedSearch)}`,
     fetcher
   );
   
@@ -89,9 +105,15 @@ export default function ShopsPage() {
     fetcher
   );
 
+  const { data: regionsData } = useSWR<{ ok: boolean; regions: any[] }>(
+    "/api/manager/regions",
+    fetcher
+  );
+
   const shops = shopsData?.shops ?? [];
   const assignments = assignmentsData?.assignments ?? [];
   const visits = visitsData?.visits ?? [];
+  const regions = regionsData?.regions ?? [];
   const reps = (staffData?.staff ?? []).filter(s => s.role === 'rep' && s.status === 'active');
 
   const loading = !shopsData || !staffData || !assignmentsData || !visitsData;
@@ -109,10 +131,10 @@ export default function ShopsPage() {
     ).size;
 
     return {
-      total: shops.length,
+      total: shopsData?.total ?? 0,
       visitedThisWeek
     };
-  }, [shops, visits]);
+  }, [shopsData?.total, visits]);
 
   const shopRows = useMemo(() => {
     const today = new Date().toDateString();
@@ -138,12 +160,11 @@ export default function ShopsPage() {
         visitedToday
       };
     }).filter(s => {
-        const matchesSearch = s.name.toLowerCase().includes(searchInput.toLowerCase()) || 
-                             (s.address?.toLowerCase() || "").includes(searchInput.toLowerCase());
+        // Client-side filtering for Tab only (Search is backend)
         const matchesTab = tab === "all" || s.visitedToday;
-        return matchesSearch && matchesTab;
+        return matchesTab;
     });
-  }, [shops, assignments, reps, visits, searchInput, tab]);
+  }, [shops, assignments, reps, visits, tab]);
 
   async function onAdd(payload: any) {
     setWorking(true);
@@ -172,16 +193,19 @@ export default function ShopsPage() {
           <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">List of all registered shops and their visit history.</p>
         </div>
         <div className="flex items-center gap-3">
-            <button className="flex h-11 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-5 text-xs font-bold uppercase tracking-widest text-zinc-600 transition-all hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Export List
-            </button>
             <button 
                 onClick={() => setShowForm(true)}
                 className="flex h-11 items-center gap-2 rounded-xl bg-[#f4a261] px-6 text-xs font-bold uppercase tracking-widest text-white shadow-lg shadow-[#f4a261]/20 transition-all hover:brightness-110"
             >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Add New Shop
+            </button>
+            <button 
+               onClick={() => setIsImportOpen(true)}
+               className="flex h-12 items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-6 text-[11px] font-black uppercase tracking-widest text-[#f4a261] transition-transform hover:scale-105 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+               Import CSV
             </button>
         </div>
       </div>
@@ -207,7 +231,6 @@ export default function ShopsPage() {
                     Visited Today
                 </button>
             </div>
-            <div className="flex items-center gap-3">
                 <div className="relative">
                     <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     <input 
@@ -218,11 +241,6 @@ export default function ShopsPage() {
                         className="h-11 w-full rounded-xl border border-zinc-100 bg-zinc-50/50 pl-11 pr-4 text-xs font-bold outline-none ring-zinc-500/10 transition-all focus:border-zinc-300 focus:ring-4 dark:border-zinc-800 dark:bg-zinc-800/40 md:w-64"
                     />
                 </div>
-                <button className="flex h-11 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 text-xs font-bold text-zinc-600 transition-all hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 3H2l8 9v6l4 2V12l8-9z"/></svg>
-                    More Filters
-                </button>
-            </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -299,9 +317,26 @@ export default function ShopsPage() {
 
         <div className="mt-8 flex items-center justify-between border-t border-zinc-100 pt-8 dark:border-zinc-800">
             <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">
-                Showing {shopRows.length} of {stats.total} entries
+                Showing {shopRows.length} of {shopsData?.total || 0} entries
             </p>
             <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="rounded-lg border border-zinc-200 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-600 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-400"
+                >
+                  Previous
+                </button>
+                <span className="text-[10px] font-black text-zinc-900 dark:text-zinc-100">
+                    Page {page}
+                </span>
+                <button 
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={shopRows.length < limit && (shopsData?.total ? page * limit >= shopsData.total : true)}
+                  className="rounded-lg border border-zinc-200 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-600 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-400"
+                >
+                  Next
+                </button>
             </div>
         </div>
       </div>
@@ -311,8 +346,22 @@ export default function ShopsPage() {
           onClose={() => setShowForm(false)}
           onSubmit={onAdd}
           working={working}
+          regions={regions}
         />
       )}
+
+      <BulkImportModal
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        title="Import Shops"
+        templateUrl="/api/manager/shops/import-template"
+        importUrl="/api/manager/shops/import"
+        onSuccess={() => {
+           mutate("/api/manager/shops");
+           mutate("/api/manager/regions"); // Refresh regions too as they might be created
+           setIsImportOpen(false);
+        }}
+      />
 
       {viewVisitsShop && (
         <VisitHistoryModal
@@ -331,8 +380,10 @@ function AddShopModal(props: {
   onClose: () => void;
   onSubmit: (payload: any) => Promise<void>;
   working: boolean;
+  regions: any[];
 }) {
   const [name, setName] = useState("");
+  const [regionId, setRegionId] = useState("");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [geofenceRadiusM, setGeofenceRadiusM] = useState("100");
@@ -346,6 +397,7 @@ function AddShopModal(props: {
     e.preventDefault();
     await props.onSubmit({
       name,
+      regionId: regionId || undefined,
       latitude: latitude ? Number(latitude) : 0,
       longitude: longitude ? Number(longitude) : 0,
       geofenceRadiusM: Number(geofenceRadiusM),
@@ -374,6 +426,19 @@ function AddShopModal(props: {
               <div>
                 <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-zinc-400">Shop Name *</label>
                 <input required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="e.g. Acme Stores Central" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-zinc-400">Region</label>
+                <select 
+                  value={regionId} 
+                  onChange={(e) => setRegionId(e.target.value)} 
+                  className={inputClass}
+                >
+                  <option value="">No Region</option>
+                  {props.regions.map(r => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-zinc-400">Address</label>

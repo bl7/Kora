@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, use } from "react";
 import Link from "next/link";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { useSession } from "../../_lib/session-context";
 import { useToast } from "../../_lib/toast-context";
@@ -58,6 +58,11 @@ export default function ShopDetailsPage(props: { params: Promise<{ id: string }>
     `/api/manager/shops/${params.id}`,
     fetcher
   );
+  const { data: regionsData } = useSWR<{ ok: boolean; regions: any[] }>("/api/manager/regions", fetcher);
+  const regions = regionsData?.regions || [];
+
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
 
   const { data: visitsData } = useSWR<VisitListResponse>(
     `/api/manager/visits?shop=${params.id}`,
@@ -148,6 +153,12 @@ export default function ShopDetailsPage(props: { params: Promise<{ id: string }>
             <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">
               Active
             </span>
+            <button 
+              onClick={() => setIsEditOpen(true)}
+              className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            </button>
           </div>
           <div className="flex flex-wrap items-center gap-6 text-[12px] font-bold text-zinc-400">
             <div className="flex items-center gap-2">
@@ -158,6 +169,10 @@ export default function ShopDetailsPage(props: { params: Promise<{ id: string }>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
               {shop.contact_phone || "—"}
             </div>
+             <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full ring-2 ring-white dark:ring-zinc-900" style={{ backgroundColor: regions.find(r => r.id === shop.region_id)?.color || '#e4e4e7' }} />
+                {shop.region_name || "No Region"}
+             </div>
           </div>
         </div>
 
@@ -173,7 +188,10 @@ export default function ShopDetailsPage(props: { params: Promise<{ id: string }>
               </div>
             </div>
           ) : (
-             <button className="flex h-12 items-center gap-2 rounded-2xl border border-dashed border-zinc-200 px-6 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:border-zinc-400 hover:text-zinc-600">
+             <button 
+               onClick={() => setIsAssignOpen(true)}
+               className="flex h-12 items-center gap-2 rounded-2xl border border-dashed border-zinc-200 px-6 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:border-zinc-400 hover:text-zinc-600"
+             >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Assign Rep
              </button>
@@ -380,6 +398,280 @@ export default function ShopDetailsPage(props: { params: Promise<{ id: string }>
              </div>
            </div>
         </div>
+      </div>
+
+      <EditShopModal 
+        isOpen={isEditOpen} 
+        onClose={() => setIsEditOpen(false)} 
+        shop={shop} 
+        regions={regions} 
+      />
+
+      <AssignRepModal
+        isOpen={isAssignOpen}
+        onClose={() => setIsAssignOpen(false)}
+        shop={shop}
+        reps={reps.filter(r => r.role === 'rep' && r.status === 'active')}
+      />
+
+    </div>
+  );
+}
+
+function EditShopModal({ 
+  isOpen, 
+  onClose, 
+  shop, 
+  regions 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  shop: Shop; 
+  regions: any[] 
+}) {
+  const [loading, setLoading] = useState(false);
+  const toast = useToast();
+  const [formData, setFormData] = useState({
+    name: shop.name,
+    address: shop.address || "",
+    contactName: shop.contact_name || "",
+    contactEmail: shop.contact_email || "",
+    contactPhone: shop.contact_phone || "",
+    operatingHours: shop.operating_hours || "",
+    notes: shop.notes || "",
+    regionId: shop.region_id || ""
+  });
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const res = await fetch(`/api/manager/shops/${shop.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.name,
+          address: formData.address || null,
+          contactName: formData.contactName || null,
+          contactEmail: formData.contactEmail || null,
+          contactPhone: formData.contactPhone || null,
+          operatingHours: formData.operatingHours || null,
+          notes: formData.notes || null,
+          regionId: formData.regionId || null
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to update shop");
+
+      mutate(`/api/manager/shops/${shop.id}`);
+      toast.success("Shop updated successfully");
+      onClose();
+    } catch (err) {
+      toast.error("Failed to update shop");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-[40px] bg-white p-8 shadow-2xl dark:bg-zinc-900">
+        <h2 className="text-2xl font-black text-zinc-900 dark:text-zinc-100">Edit Shop</h2>
+        
+        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Shop Name</label>
+              <input
+                required
+                value={formData.name}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                className="h-12 w-full rounded-2xl border border-zinc-100 bg-zinc-50 px-4 text-sm font-bold outline-none focus:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-800/50"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Region</label>
+              <select
+                value={formData.regionId}
+                onChange={e => setFormData({ ...formData, regionId: e.target.value })}
+                className="h-12 w-full rounded-2xl border border-zinc-100 bg-zinc-50 px-4 text-sm font-bold outline-none focus:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-800/50"
+              >
+                <option value="">No Region</option>
+                {regions.map(r => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Address</label>
+            <input
+              value={formData.address}
+              onChange={e => setFormData({ ...formData, address: e.target.value })}
+              className="h-12 w-full rounded-2xl border border-zinc-100 bg-zinc-50 px-4 text-sm font-medium outline-none focus:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-800/50"
+            />
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-3">
+             <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Contact Person</label>
+              <input
+                value={formData.contactName}
+                onChange={e => setFormData({ ...formData, contactName: e.target.value })}
+                className="h-12 w-full rounded-2xl border border-zinc-100 bg-zinc-50 px-4 text-sm font-medium outline-none focus:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-800/50"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Phone</label>
+              <input
+                value={formData.contactPhone}
+                onChange={e => setFormData({ ...formData, contactPhone: e.target.value })}
+                className="h-12 w-full rounded-2xl border border-zinc-100 bg-zinc-50 px-4 text-sm font-medium outline-none focus:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-800/50"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Email</label>
+              <input
+                value={formData.contactEmail}
+                onChange={e => setFormData({ ...formData, contactEmail: e.target.value })}
+                className="h-12 w-full rounded-2xl border border-zinc-100 bg-zinc-50 px-4 text-sm font-medium outline-none focus:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-800/50"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Notes to Reps</label>
+            <textarea
+              value={formData.notes}
+              onChange={e => setFormData({ ...formData, notes: e.target.value })}
+              className="h-24 w-full resize-none rounded-2xl border border-zinc-100 bg-zinc-50 p-4 text-sm font-medium outline-none focus:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-800/50"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-2xl px-6 py-3 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="rounded-2xl bg-[#f4a261] px-8 py-3 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/20 transition-transform hover:scale-105 hover:bg-[#e79450] disabled:opacity-70"
+            >
+              {loading ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function AssignRepModal({ 
+  isOpen, 
+  onClose, 
+  shop, 
+  reps 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  shop: Shop; 
+  reps: any[] 
+}) {
+  const [loading, setLoading] = useState(false);
+  const toast = useToast();
+  const [selectedRepId, setSelectedRepId] = useState("");
+  const [isPrimary, setIsPrimary] = useState(true);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedRepId) return;
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/manager/shop-assignments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shopId: shop.id,
+          repCompanyUserId: selectedRepId,
+          isPrimary
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to assign rep");
+
+      mutate(`/api/manager/shop-assignments`); // Refresh assignments list
+      // Also mutate shop details if needed, or rely on SWR refetch
+      mutate(`/api/manager/shops/${shop.id}`);
+      toast.success("Rep assigned successfully");
+      onClose();
+    } catch (err) {
+      toast.error("Failed to assign rep");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-[40px] bg-white p-8 shadow-2xl dark:bg-zinc-900">
+        <h2 className="text-2xl font-black text-zinc-900 dark:text-zinc-100">Assign Rep</h2>
+        <p className="text-sm font-medium text-zinc-500">Assign a sales representative to this shop.</p>
+        
+        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Select Rep</label>
+            <select
+              required
+              value={selectedRepId}
+              onChange={e => setSelectedRepId(e.target.value)}
+              className="h-12 w-full rounded-2xl border border-zinc-100 bg-zinc-50 px-4 text-sm font-bold outline-none focus:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-800/50"
+            >
+              <option value="">Select a representative...</option>
+              {reps.map(r => (
+                <option key={r.company_user_id} value={r.company_user_id}>{r.full_name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-3">
+             <input 
+               type="checkbox" 
+               id="isPrimary" 
+               checked={isPrimary} 
+               onChange={e => setIsPrimary(e.target.checked)}
+               className="h-5 w-5 rounded-md border-zinc-300 text-[#f4a261] focus:ring-[#f4a261]"
+             />
+             <label htmlFor="isPrimary" className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Set as Primary Rep</label>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-2xl px-6 py-3 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !selectedRepId}
+              className="rounded-2xl bg-[#f4a261] px-8 py-3 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/20 transition-transform hover:scale-105 hover:bg-[#e79450] disabled:opacity-70"
+            >
+              {loading ? "Assigning..." : "Assign Rep"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
