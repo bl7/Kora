@@ -329,6 +329,13 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
     const shops = shopsData?.shops || [];
     const products = productsData?.products || [];
 
+    const [productSearch, setProductSearch] = useState("");
+    const filteredProducts = useMemo(() => {
+        if (!productSearch) return products;
+        const q = productSearch.toLowerCase();
+        return products.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
+    }, [products, productSearch]);
+
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!shopId) return toast.error("Please select a shop");
@@ -397,10 +404,25 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
 
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Add Product (Search by Name or SKU)</label>
-                            <select className={inputClass} onChange={e => { if(e.target.value) addItem(e.target.value); e.target.value = ""; }}>
-                                <option value="">Scan SKU or select product...</option>
-                                {products.map(p => <option key={p.id} value={p.id}>[{p.sku}] {p.name}</option>)}
-                            </select>
+                            <div className="space-y-2">
+                                <div className="relative">
+                                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Search products..." 
+                                        className="w-full rounded-lg border border-zinc-200 bg-white pl-8 pr-4 py-2 text-[11px] font-bold outline-none dark:bg-zinc-800 dark:border-zinc-700"
+                                        value={productSearch}
+                                        onChange={e => setProductSearch(e.target.value)}
+                                    />
+                                </div>
+                                <select 
+                                    className="w-full text-[11px] font-bold bg-white border border-zinc-200 rounded-lg px-3 py-2 outline-none dark:bg-zinc-800 dark:border-zinc-700" 
+                                    onChange={e => { if(e.target.value) addItem(e.target.value); e.target.value = ""; setProductSearch(""); }}
+                                >
+                                    <option value="">{productSearch ? `Found ${filteredProducts.length} results...` : "+ Select Product to Add"}</option>
+                                    {filteredProducts.map(p => <option key={p.id} value={p.id}>[{p.sku}] {p.name}</option>)}
+                                </select>
+                            </div>
                         </div>
 
                         <div className="space-y-1.5">
@@ -554,6 +576,13 @@ function OrderDetailsDrawer({ orderId, onClose, mutateOrders }: { orderId: strin
         }
     }
 
+    const [productSearch, setProductSearch] = useState("");
+    const filteredProducts = useMemo(() => {
+        if (!productSearch) return products;
+        const q = productSearch.toLowerCase();
+        return products.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
+    }, [products, productSearch]);
+
     const addItem = (pId: string) => {
         const p = products.find(x => x.id === pId);
         if (!p) return;
@@ -612,16 +641,28 @@ function OrderDetailsDrawer({ orderId, onClose, mutateOrders }: { orderId: strin
                     </section>
 
                     <section className="rounded-[24px] border border-zinc-100 bg-zinc-50/20 p-6 dark:border-zinc-800 dark:bg-zinc-800/20">
-                        <div className="flex items-center justify-between mb-6">
+                        <div className="flex flex-col gap-4 mb-6">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Line Items</h3>
                             {isEditing && (
-                                <select 
-                                    className="text-[10px] font-black uppercase tracking-widest bg-white border border-zinc-200 rounded-lg px-2 py-1 outline-none dark:bg-zinc-800 dark:border-zinc-700" 
-                                    onChange={e => { if(e.target.value) addItem(e.target.value); e.target.value = ""; }}
-                                >
-                                    <option value="">+ Add Product (SKU/Name)</option>
-                                    {products.map(p => <option key={p.id} value={p.id}>[{p.sku}] {p.name}</option>)}
-                                </select>
+                                <div className="space-y-2">
+                                    <div className="relative">
+                                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                        <input 
+                                            type="text" 
+                                            placeholder="Search products..." 
+                                            className="w-full rounded-lg border border-zinc-200 bg-white pl-8 pr-4 py-2 text-[11px] font-bold outline-none dark:bg-zinc-800 dark:border-zinc-700"
+                                            value={productSearch}
+                                            onChange={e => setProductSearch(e.target.value)}
+                                        />
+                                    </div>
+                                    <select 
+                                        className="w-full text-[11px] font-bold bg-white border border-zinc-200 rounded-lg px-3 py-2 outline-none dark:bg-zinc-800 dark:border-zinc-700" 
+                                        onChange={e => { if(e.target.value) addItem(e.target.value); e.target.value = ""; setProductSearch(""); }}
+                                    >
+                                        <option value="">{productSearch ? `Found ${filteredProducts.length} results...` : "+ Select Product to Add"}</option>
+                                        {filteredProducts.map(p => <option key={p.id} value={p.id}>[{p.sku}] {p.name}</option>)}
+                                    </select>
+                                </div>
                             )}
                         </div>
                         
