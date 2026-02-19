@@ -98,6 +98,7 @@ export type Lead = {
   assigned_rep_name?: string | null;
   notes: string | null;
   created_at: string;
+  converted_at?: string | null;
 };
 
 export type LeadListResponse = {

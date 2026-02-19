@@ -48,7 +48,9 @@ export default function DashboardPage() {
     topPerformers: [] as any[],
     underperformers: [] as any[],
     teamCoverage: 0,
-    missedVisits: 0
+    missedVisits: 0,
+    leadsThisWeek: 0,
+    conversionsThisWeek: 0,
   });
 
   const { data: staffData } = useSWR<StaffListResponse>("/api/manager/staff", fetcher);
@@ -89,7 +91,27 @@ export default function DashboardPage() {
       const teamCoverage = totalAssigned > 0 ? Math.round((totalVisitedUnique / totalAssigned) * 100) : 0;
       const missedVisits = totalAssigned - totalVisitedUnique;
 
-      setStats({ activeReps, totalStaff, newLeads, totalShops, visitsToday, verifiedToday, exceptionsToday, pendingToday, ordersToday, revenueTodayFormatted, topPerformers, underperformers, teamCoverage, missedVisits });
+      // Pipeline (This Week - Monday Start)
+      const now = new Date();
+      const startOfWeek = new Date(now);
+      const day = startOfWeek.getDay();
+      const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+      startOfWeek.setDate(diff);
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const leadsThisWeek = leadsData.leads?.filter((l: Lead) => {
+          const createdDate = new Date(l.created_at);
+          return createdDate >= startOfWeek;
+      }).length || 0;
+
+      const conversionsThisWeek = leadsData.leads?.filter((l: Lead) => {
+          if (!l.converted_at) return false;
+          const convertedDate = new Date(l.converted_at);
+          return convertedDate >= startOfWeek;
+      }).length || 0;
+
+      setStats({ 
+activeReps, totalStaff, newLeads, totalShops, visitsToday, verifiedToday, exceptionsToday, pendingToday, ordersToday, revenueTodayFormatted, topPerformers, underperformers, teamCoverage, missedVisits, leadsThisWeek, conversionsThisWeek });
     }
   }, [staffData, shopsData, leadsData, ordersData, visitsData, exceptionsData, coverageData]);
 
@@ -98,8 +120,8 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="space-y-8 animate-pulse">
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map(i => (
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-5">
+          {[1, 2, 3, 4, 5].map(i => (
             <div key={i} className="h-32 rounded-[32px] bg-zinc-100 dark:bg-zinc-800" />
           ))}
         </div>
@@ -117,7 +139,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Row 1: Signal Cards ── */}
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-5">
         {/* Active Reps */}
         <div className="rounded-[32px] border border-zinc-100 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex items-center justify-between">
@@ -186,6 +208,23 @@ export default function DashboardPage() {
             <div className="mt-2 flex gap-3 text-[10px] font-bold">
               <span className="text-zinc-400">Exceptions today: {stats.exceptionsToday}</span>
               <span className="text-emerald-500">Verified: {stats.verifiedToday}</span>
+            </div>
+          </div>
+        </Link>
+
+        {/* Weekly Pipeline */}
+        <Link href="/dashboard/leads" className="block">
+          <div className="rounded-[32px] border border-orange-100 bg-orange-50/40 p-8 shadow-sm transition-all hover:shadow-md dark:border-orange-950/20 dark:bg-orange-950/5">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-black uppercase tracking-widest text-orange-500">Weekly Pipeline</p>
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-100 text-orange-500 dark:bg-orange-900/30">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+              </div>
+            </div>
+            <p className="mt-4 text-4xl font-black tracking-tight text-orange-700 dark:text-orange-400">{stats.leadsThisWeek}</p>
+            <div className="mt-2 flex gap-3 text-[10px] font-bold">
+               <span className="text-zinc-400">New leads this week</span>
+               <span className="text-emerald-500">{stats.conversionsThisWeek} converted to shops</span>
             </div>
           </div>
         </Link>
