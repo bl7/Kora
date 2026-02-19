@@ -398,8 +398,7 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Add Product (Search by Name or SKU)</label>
                             <select className={inputClass} onChange={e => { if(e.target.value) addItem(e.target.value); e.target.value = ""; }}>
-                                <option value="">Scan SKU or select product...</option>
-                                {products.map(p => <option key={p.id} value={p.id}>[{p.sku}] {p.name}</option>)}
+                                {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
                         </div>
 
@@ -415,10 +414,7 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
                             {orderItems.map((item, idx) => (
                                 <div key={idx} className="flex items-center justify-between group">
                                     <div className="flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[13px] font-black text-indigo-600 dark:text-indigo-400 shrink-0">[{item.sku}]</span>
-                                            <p className="text-[13px] font-bold text-zinc-900 dark:text-zinc-100 truncate">{item.name}</p>
-                                        </div>
+                                        <p className="text-[13px] font-bold text-zinc-900 dark:text-zinc-100 truncate">{item.name}</p>
                                         <div className="flex items-center gap-3 mt-1">
                                             <input 
                                                 type="number" 
@@ -619,8 +615,7 @@ function OrderDetailsDrawer({ orderId, onClose, mutateOrders }: { orderId: strin
                                     className="text-[10px] font-black uppercase tracking-widest bg-white border border-zinc-200 rounded-lg px-2 py-1 outline-none dark:bg-zinc-800 dark:border-zinc-700" 
                                     onChange={e => { if(e.target.value) addItem(e.target.value); e.target.value = ""; }}
                                 >
-                                    <option value="">+ Add Product (SKU/Name)</option>
-                                    {products.map(p => <option key={p.id} value={p.id}>[{p.sku}] {p.name}</option>)}
+                                    {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
                             )}
                         </div>
@@ -630,10 +625,7 @@ function OrderDetailsDrawer({ orderId, onClose, mutateOrders }: { orderId: strin
                                 editItems.map((item, idx) => (
                                     <div key={idx} className="flex items-center justify-between group">
                                     <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[13px] font-black text-indigo-600 dark:text-indigo-400 shrink-0">[{item.sku}]</span>
                                                 <p className="text-[13px] font-bold text-zinc-900 dark:text-zinc-100 truncate">{item.name}</p>
-                                            </div>
                                             <div className="flex items-center gap-3 mt-1">
                                                 <input 
                                                     type="number" 
@@ -665,10 +657,7 @@ function OrderDetailsDrawer({ orderId, onClose, mutateOrders }: { orderId: strin
                                 (order.items || []).map(item => (
                                     <div key={item.id} className="flex items-center justify-between">
                                         <div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[13px] font-black text-indigo-600 dark:text-indigo-400">[{item.product_sku}]</span>
                                                 <p className="text-[13px] font-bold text-zinc-900 dark:text-zinc-100">{item.product_name}</p>
-                                            </div>
                                             <p className="text-[11px] font-medium text-zinc-400">Qty: {Number(item.quantity)} × {order.currency_code} {Number(item.unit_price).toLocaleString()}</p>
                                         </div>
                                         <span className="text-[13px] font-black text-zinc-900 dark:text-zinc-100">

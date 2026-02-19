@@ -74,7 +74,6 @@ export default function ProductDetailsPage(props: { params: Promise<{ id: string
                 </span>
             </div>
             <div className="flex items-center gap-4 flex-wrap">
-                <span className="text-4xl font-black tracking-tight text-indigo-600 dark:text-indigo-400 shrink-0">[{product.sku}]</span>
                 <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100 max-w-4xl">
                   {product.name}
                 </h1>
