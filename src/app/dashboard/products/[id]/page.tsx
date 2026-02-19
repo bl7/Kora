@@ -72,11 +72,13 @@ export default function ProductDetailsPage(props: { params: Promise<{ id: string
                 <span className="rounded-md bg-zinc-900 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-white dark:bg-zinc-100 dark:text-zinc-900">
                     {product.is_active ? "ACTIVE PRODUCT" : "INACTIVE"}
                 </span>
-                <span className="text-[11px] font-bold text-zinc-400">#{product.sku}</span>
             </div>
-            <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100 max-w-4xl">
-              {product.name}
-            </h1>
+            <div className="flex items-center gap-4 flex-wrap">
+                <span className="text-4xl font-black tracking-tight text-indigo-600 dark:text-indigo-400 shrink-0">[{product.sku}]</span>
+                <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-100 max-w-4xl">
+                  {product.name}
+                </h1>
+            </div>
           </div>
         </div>
 

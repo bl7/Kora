@@ -10,6 +10,7 @@ import { Breadcrumbs } from "../_lib/breadcrumbs";
 
 type OrderItem = {
   id: string;
+  product_id: string | null;
   product_name: string;
   product_sku: string | null;
   quantity: string;
@@ -395,10 +396,10 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Add Product</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Add Product (Search by Name or SKU)</label>
                             <select className={inputClass} onChange={e => { if(e.target.value) addItem(e.target.value); e.target.value = ""; }}>
-                                <option value="">Scan or select product...</option>
-                                {products.map(p => <option key={p.id} value={p.id}>{p.name} - {p.sku}</option>)}
+                                <option value="">Scan SKU or select product...</option>
+                                {products.map(p => <option key={p.id} value={p.id}>[{p.sku}] {p.name}</option>)}
                             </select>
                         </div>
 
@@ -414,7 +415,10 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
                             {orderItems.map((item, idx) => (
                                 <div key={idx} className="flex items-center justify-between group">
                                     <div className="flex-1">
-                                        <p className="text-[13px] font-bold text-zinc-900 dark:text-zinc-100">{item.name}</p>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[13px] font-black text-indigo-600 dark:text-indigo-400 shrink-0">[{item.sku}]</span>
+                                            <p className="text-[13px] font-bold text-zinc-900 dark:text-zinc-100 truncate">{item.name}</p>
+                                        </div>
                                         <div className="flex items-center gap-3 mt-1">
                                             <input 
                                                 type="number" 
@@ -470,12 +474,36 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
 function OrderDetailsDrawer({ orderId, onClose, mutateOrders }: { orderId: string; onClose: () => void; mutateOrders: () => void }) {
     const toast = useToast();
     const [working, setWorking] = useState(false);
-    const { data: orderData } = useSWR<{ ok: boolean; order: OrderDetail }>(
+    const [isEditing, setIsEditing] = useState(false);
+    const [editNotes, setEditNotes] = useState("");
+    const [editItems, setEditItems] = useState<{ productId: string; name: string; sku: string; quantity: number; unitPrice: number; notes: string | null }[]>([]);
+
+    const { data: orderData, mutate: mutateDetail } = useSWR<{ ok: boolean; order: OrderDetail }>(
         `/api/manager/orders/${orderId}`,
         fetcher
     );
 
+    const { data: productsData } = useSWR<{ ok: boolean; products: Product[] }>(
+        isEditing ? "/api/manager/products" : null,
+        fetcher
+    );
+
     const order = orderData?.order;
+    const products = productsData?.products || [];
+
+    useEffect(() => {
+        if (order && !isEditing) {
+            setEditNotes(order.notes || "");
+            setEditItems((order.items || []).map(i => ({
+                productId: i.product_id || "",
+                name: i.product_name,
+                sku: i.product_sku || "",
+                quantity: Number(i.quantity),
+                unitPrice: Number(i.unit_price),
+                notes: i.notes
+            })));
+        }
+    }, [order, isEditing]);
 
     async function transition(nextStatus: string) {
         setWorking(true);
@@ -489,13 +517,59 @@ function OrderDetailsDrawer({ orderId, onClose, mutateOrders }: { orderId: strin
         if (data.ok) {
             toast.success(`Order moving to ${nextStatus}`);
             mutateOrders();
-            onClose();
+            mutateDetail();
+            if (nextStatus === "closed" || nextStatus === "cancelled") onClose();
         } else {
             toast.error(data.error || "Update failed");
         }
     }
 
+    async function handleSaveEdits() {
+        if (editItems.length === 0) return toast.error("At least one item is required");
+        setWorking(true);
+        const res = await fetch(`/api/manager/orders/${orderId}`, {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+                notes: editNotes,
+                items: editItems.map(i => ({
+                    productId: i.productId,
+                    productName: i.name,
+                    productSku: i.sku,
+                    quantity: i.quantity,
+                    unitPrice: i.unitPrice,
+                    notes: i.notes || undefined
+                }))
+            }),
+        });
+        const data = await res.json();
+        setWorking(false);
+        if (data.ok) {
+            toast.success("Order updated successfully");
+            setIsEditing(false);
+            mutateOrders();
+            mutateDetail();
+        } else {
+            toast.error(data.message || "Failed to update order");
+        }
+    }
+
+    const addItem = (pId: string) => {
+        const p = products.find(x => x.id === pId);
+        if (!p) return;
+        setEditItems(prev => [...prev, {
+            productId: p.id,
+            name: p.name,
+            sku: p.sku,
+            quantity: 1,
+            unitPrice: Number(p.current_price || 0),
+            notes: null
+        }]);
+    };
+
     if (!order) return null;
+
+    const inputClass = "w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-900 outline-none ring-zinc-500/10 transition-all focus:border-zinc-400 focus:ring-4 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100";
 
     return (
         <div className="fixed inset-0 z-50 flex justify-end bg-zinc-900/60 backdrop-blur-sm" onClick={onClose}>
@@ -508,9 +582,19 @@ function OrderDetailsDrawer({ orderId, onClose, mutateOrders }: { orderId: strin
                         </span>
                         <h2 className="mt-3 text-2xl font-black text-zinc-900 dark:text-zinc-100">{order.order_number}</h2>
                     </div>
-                    <button onClick={onClose} className="rounded-full bg-zinc-50 p-2 text-zinc-400 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
+                    <div className="flex gap-2">
+                         {!isEditing && (order.status === "received" || order.status === "processing") && (
+                            <button 
+                                onClick={() => setIsEditing(true)}
+                                className="rounded-full bg-zinc-50 p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors"
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </button>
+                        )}
+                        <button onClick={onClose} className="rounded-full bg-zinc-50 p-2 text-zinc-400 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </div>
                 </div>
 
                 <div className="space-y-10">
@@ -528,53 +612,135 @@ function OrderDetailsDrawer({ orderId, onClose, mutateOrders }: { orderId: strin
                     </section>
 
                     <section className="rounded-[24px] border border-zinc-100 bg-zinc-50/20 p-6 dark:border-zinc-800 dark:bg-zinc-800/20">
-                        <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-6">Line Items</h3>
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Line Items</h3>
+                            {isEditing && (
+                                <select 
+                                    className="text-[10px] font-black uppercase tracking-widest bg-white border border-zinc-200 rounded-lg px-2 py-1 outline-none dark:bg-zinc-800 dark:border-zinc-700" 
+                                    onChange={e => { if(e.target.value) addItem(e.target.value); e.target.value = ""; }}
+                                >
+                                    <option value="">+ Add Product (SKU/Name)</option>
+                                    {products.map(p => <option key={p.id} value={p.id}>[{p.sku}] {p.name}</option>)}
+                                </select>
+                            )}
+                        </div>
+                        
                         <div className="space-y-4">
-                            {(order.items || []).map(item => (
-                                <div key={item.id} className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-[13px] font-bold text-zinc-900 dark:text-zinc-100">{item.product_name}</p>
-                                        <p className="text-[11px] font-medium text-zinc-400">Qty: {Number(item.quantity)} × {order.currency_code} {Number(item.unit_price).toLocaleString()}</p>
+                            {isEditing ? (
+                                editItems.map((item, idx) => (
+                                    <div key={idx} className="flex items-center justify-between group">
+                                    <div className="flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[13px] font-black text-indigo-600 dark:text-indigo-400 shrink-0">[{item.sku}]</span>
+                                                <p className="text-[13px] font-bold text-zinc-900 dark:text-zinc-100 truncate">{item.name}</p>
+                                            </div>
+                                            <div className="flex items-center gap-3 mt-1">
+                                                <input 
+                                                    type="number" 
+                                                    min="1" 
+                                                    className="w-16 rounded-lg border border-zinc-100 bg-zinc-50 px-2 py-1 text-xs font-bold text-zinc-600 focus:bg-white dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300" 
+                                                    value={item.quantity} 
+                                                    onChange={e => {
+                                                        const next = [...editItems];
+                                                        next[idx].quantity = Number(e.target.value);
+                                                        setEditItems(next);
+                                                    }}
+                                                />
+                                                <span className="text-[11px] font-bold text-zinc-400">× {order.currency_code} {item.unitPrice.toLocaleString()}</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-right flex items-center gap-4">
+                                            <span className="text-[13px] font-black text-zinc-900 dark:text-zinc-100">{order.currency_code} {(item.quantity * item.unitPrice).toLocaleString()}</span>
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setEditItems(prev => prev.filter((_, i) => i !== idx))}
+                                                className="text-zinc-300 hover:text-rose-500 transition-colors"
+                                            >
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                            </button>
+                                        </div>
                                     </div>
-                                    <span className="text-[13px] font-black text-zinc-900 dark:text-zinc-100">
-                                        {order.currency_code} {Number(item.line_total).toLocaleString()}
-                                    </span>
-                                </div>
-                            ))}
-                            {(!order.items || order.items.length === 0) && (
+                                ))
+                            ) : (
+                                (order.items || []).map(item => (
+                                    <div key={item.id} className="flex items-center justify-between">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[13px] font-black text-indigo-600 dark:text-indigo-400">[{item.product_sku}]</span>
+                                                <p className="text-[13px] font-bold text-zinc-900 dark:text-zinc-100">{item.product_name}</p>
+                                            </div>
+                                            <p className="text-[11px] font-medium text-zinc-400">Qty: {Number(item.quantity)} × {order.currency_code} {Number(item.unit_price).toLocaleString()}</p>
+                                        </div>
+                                        <span className="text-[13px] font-black text-zinc-900 dark:text-zinc-100">
+                                            {order.currency_code} {Number(item.line_total).toLocaleString()}
+                                        </span>
+                                    </div>
+                                ))
+                            )}
+                            
+                            {((!isEditing && (!order.items || order.items.length === 0)) || (isEditing && editItems.length === 0)) && (
                                 <div className="py-6 text-center border-2 border-dashed border-zinc-100 rounded-2xl dark:border-zinc-800">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-300">No products listed in this order</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-300">No products listed</p>
                                 </div>
                             )}
                         </div>
+
                         <div className="mt-6 border-t border-zinc-100 pt-6 flex justify-end dark:border-zinc-800">
                             <div className="text-right">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Order Total</p>
-                                <p className="text-2xl font-black text-zinc-900 dark:text-zinc-100">{order.currency_code} {Number(order.total_amount).toLocaleString()}</p>
+                                <p className="text-2xl font-black text-zinc-900 dark:text-zinc-100">
+                                    {order.currency_code} {isEditing 
+                                        ? editItems.reduce((acc, i) => acc + (i.quantity * i.unitPrice), 0).toLocaleString()
+                                        : Number(order.total_amount).toLocaleString()
+                                    }
+                                </p>
                             </div>
                         </div>
                     </section>
 
-                    {order.notes && (
-                        <section>
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-3">Customer Notes</h3>
-                            <div className="rounded-2xl border-l-4 border-orange-200 bg-orange-50/30 p-4 dark:bg-amber-900/10">
-                                <p className="text-[13px] font-medium text-zinc-600 dark:text-zinc-400">{order.notes}</p>
-                            </div>
-                        </section>
-                    )}
+                    <section>
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-3">Customer Notes</h3>
+                        {isEditing ? (
+                            <textarea 
+                                className={`${inputClass} h-32 resize-none`} 
+                                value={editNotes} 
+                                onChange={e => setEditNotes(e.target.value)} 
+                                placeholder="Edit order notes..." 
+                            />
+                        ) : (
+                            order.notes && (
+                                <div className="rounded-2xl border-l-4 border-orange-200 bg-orange-50/30 p-4 dark:bg-amber-900/10">
+                                    <p className="text-[13px] font-medium text-zinc-600 dark:text-zinc-400">{order.notes}</p>
+                                </div>
+                            )
+                        )}
+                        {!isEditing && !order.notes && (
+                            <p className="text-[11px] font-bold text-zinc-300 italic">No notes provided</p>
+                        )}
+                    </section>
 
                     <div className="pt-10 border-t border-zinc-100 flex flex-col gap-3 dark:border-zinc-800">
-                        {order.status === "received" && (
-                            <button onClick={() => transition("processing")} disabled={working} className="h-14 w-full rounded-2xl bg-[#f4a261] text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-[#f4a261]/20 hover:brightness-110">Start Processing</button>
+                        {isEditing ? (
+                            <>
+                                <button onClick={handleSaveEdits} disabled={working} className="h-14 w-full rounded-2xl bg-emerald-600 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-600/20 hover:brightness-110">
+                                    {working ? "Saving Changes..." : "Save Changes"}
+                                </button>
+                                <button onClick={() => setIsEditing(false)} disabled={working} className="h-14 w-full rounded-2xl border border-zinc-200 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:bg-zinc-50">Cancel Editing</button>
+                            </>
+                        ) : (
+                            <>
+                                {order.status === "received" && (
+                                    <button onClick={() => transition("processing")} disabled={working} className="h-14 w-full rounded-2xl bg-[#f4a261] text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-[#f4a261]/20 hover:brightness-110">Start Processing</button>
+                                )}
+                                {order.status === "processing" && (
+                                    <button onClick={() => transition("shipped")} disabled={working} className="h-14 w-full rounded-2xl bg-indigo-600 text-[11px] font-black uppercase tracking-widest text-white shadow-lg hover:brightness-110">Mark as Dispatched</button>
+                                )}
+                                {order.status === "shipped" && (
+                                    <button onClick={() => transition("closed")} disabled={working} className="h-14 w-full rounded-2xl bg-emerald-600 text-[11px] font-black uppercase tracking-widest text-white shadow-lg hover:brightness-110">Complete Order</button>
+                                )}
+                                <button onClick={onClose} className="h-14 w-full rounded-2xl border border-zinc-200 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:bg-zinc-50">Close Detail</button>
+                            </>
                         )}
-                        {order.status === "processing" && (
-                            <button onClick={() => transition("shipped")} disabled={working} className="h-14 w-full rounded-2xl bg-indigo-600 text-[11px] font-black uppercase tracking-widest text-white shadow-lg hover:brightness-110">Mark as Dispatched</button>
-                        )}
-                        {order.status === "shipped" && (
-                            <button onClick={() => transition("closed")} disabled={working} className="h-14 w-full rounded-2xl bg-emerald-600 text-[11px] font-black uppercase tracking-widest text-white shadow-lg hover:brightness-110">Complete Order</button>
-                        )}
-                        <button onClick={onClose} className="h-14 w-full rounded-2xl border border-zinc-200 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:bg-zinc-50">Close Detail</button>
                     </div>
                 </div>
             </div>
