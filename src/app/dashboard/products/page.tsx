@@ -277,10 +277,7 @@ export default function ProductsPage() {
                        </div>
                        <div>
                           <Link href={`/dashboard/products/${p.id}`}>
-                            <div className="flex items-center gap-2">
-                                <span className="text-[13px] font-black text-indigo-600 dark:text-indigo-400 shrink-0">[{p.sku}]</span>
-                                <p className="text-[13px] font-black text-zinc-900 transition-colors hover:text-[#f4a261] dark:text-zinc-100 dark:hover:text-[#f4a261]">{p.name}</p>
-                            </div>
+                            <p className="text-[13px] font-black text-zinc-900 transition-colors hover:text-[#f4a261] dark:text-zinc-100 dark:hover:text-[#f4a261]">{p.name}</p>
                           </Link>
                           <p className="max-w-[200px] truncate text-[11px] font-medium text-zinc-400 mt-0.5">{p.description || "No description provided."}</p>
                        </div>
