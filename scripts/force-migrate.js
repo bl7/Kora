@@ -2,7 +2,11 @@ const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
-const connectionString = 'postgresql://salessuite_app:mon0715@72.61.17.146:5432/salessuite';
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+    console.error("DATABASE_URL must be set in the environment.");
+    process.exit(1);
+}
 
 const pool = new Pool({
     connectionString,
