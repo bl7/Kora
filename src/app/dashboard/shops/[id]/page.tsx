@@ -16,6 +16,59 @@ import type {
 } from "../../_lib/types";
 import { Breadcrumbs } from "../../_lib/breadcrumbs";
 
+type OrderItem = {
+  id: string;
+  product_id: string | null;
+  product_name: string;
+  product_sku: string | null;
+  quantity: string;
+  unit_price: string;
+  line_total: string;
+  notes: string | null;
+};
+
+type Order = {
+  id: string;
+  order_number: string;
+  status: "received" | "processing" | "shipped" | "closed" | "cancelled";
+  notes: string | null;
+  total_amount: string;
+  currency_code: string;
+  placed_at: string;
+  processed_at: string | null;
+  shipped_at: string | null;
+  closed_at: string | null;
+  cancelled_at: string | null;
+  cancel_reason: string | null;
+  cancel_note: string | null;
+  created_at: string;
+  updated_at: string;
+  shop_id: string | null;
+  shop_name: string | null;
+  shop_phone: string | null;
+  shop_address: string | null;
+  lead_name: string | null;
+  placed_by_name: string | null;
+  placed_by_company_user_id: string | null;
+  items_count?: number;
+  items: OrderItem[] | null;
+};
+
+type OrderDetail = Order & {
+  shop_contact_name?: string | null;
+  cancelled_by_name?: string | null;
+};
+
+type Product = { id: string; name: string; sku: string; current_price: string | null; currency_code: string | null; unit: string };
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
+  received: { label: "Received", color: "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400", dot: "bg-blue-500" },
+  processing: { label: "Processing", color: "bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400", dot: "bg-amber-500" },
+  shipped: { label: "Dispatched", color: "bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400", dot: "bg-indigo-500" },
+  closed: { label: "Completed", color: "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400", dot: "bg-emerald-500" },
+  cancelled: { label: "Cancelled", color: "bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400", dot: "bg-rose-500" },
+};
+
 function StatCard({ title, value, subValue, icon, accentColor }: { 
   title: string; 
   value: string; 
@@ -63,6 +116,8 @@ export default function ShopDetailsPage(props: { params: Promise<{ id: string }>
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [drawerOrderId, setDrawerOrderId] = useState<string | null>(null);
 
   const { data: visitsData } = useSWR<VisitListResponse>(
     `/api/manager/visits?shop=${params.id}`,
@@ -79,8 +134,14 @@ export default function ShopDetailsPage(props: { params: Promise<{ id: string }>
     fetcher
   );
 
+  const { data: ordersData, mutate: mutateOrders } = useSWR<any>(
+    `/api/manager/orders?shop=${params.id}`,
+    fetcher
+  );
+
   const shop = shopData?.shop;
   const visits = visitsData?.visits ?? [];
+  const orders = ordersData?.orders ?? [];
   const assignments = assignmentsData?.assignments ?? [];
   const reps = staffData?.staff ?? [];
 
@@ -196,7 +257,10 @@ export default function ShopDetailsPage(props: { params: Promise<{ id: string }>
                 Assign Rep
              </button>
           )}
-          <button className="flex h-14 items-center gap-2 rounded-[20px] bg-[#f4a261] px-8 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-[#f4a261]/20 transition-all hover:brightness-110">
+          <button 
+            onClick={() => setIsTaskModalOpen(true)}
+            className="flex h-14 items-center gap-2 rounded-[20px] bg-[#f4a261] px-8 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-[#f4a261]/20 transition-all hover:brightness-110"
+          >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             Assign Task
           </button>
@@ -294,10 +358,18 @@ export default function ShopDetailsPage(props: { params: Promise<{ id: string }>
                         <span className="text-[11px] font-black text-indigo-600 dark:text-indigo-400">{duration ? `${duration} mins` : "In Progress"}</span>
                       </div>
                     </td>
-                    <td className="py-6">
-                      <p className="max-w-[300px] truncate text-[12px] font-medium text-zinc-500 dark:text-zinc-400">
-                        {v.notes || "No notes provided for this visit."}
-                      </p>
+                    <td className="py-6 min-w-[200px]">
+                      {v.notes ? (
+                        <div className="rounded-xl border border-zinc-50 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                          <p className="text-[12px] italic text-zinc-600 dark:text-zinc-300">
+                            "{v.notes}"
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-[12px] font-medium text-zinc-400 dark:text-zinc-500">
+                          No notes provided for this visit.
+                        </p>
+                      )}
                     </td>
                     <td className="py-6 text-right">
                       <button className="text-[11px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-700">View Detail</button>
@@ -322,6 +394,75 @@ export default function ShopDetailsPage(props: { params: Promise<{ id: string }>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
             </div>
+        </div>
+      </div>
+
+      {/* Order History Log Card */}
+      <div className="rounded-[32px] border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mb-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-500 dark:bg-emerald-900/20">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            </div>
+            <h2 className="text-xl font-black text-zinc-900 dark:text-zinc-100">Order History</h2>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-zinc-100 dark:border-zinc-800/60">
+                <th className="pb-5 pl-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">ORDER NO.</th>
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">DATE</th>
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">AMOUNT</th>
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">STATUS</th>
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400 text-right">OPTION</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/40">
+              {orders.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-sm font-bold text-zinc-400">No orders found for this shop.</td>
+                </tr>
+              ) : orders.map((o: any) => (
+                <tr key={o.id} className="group hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20">
+                  <td className="py-6 pl-2">
+                    <span className="text-[14px] font-black text-zinc-900 dark:text-zinc-100">#{o.order_number}</span>
+                  </td>
+                  <td className="py-6">
+                    <div className="flex items-center gap-2">
+                       <span className="text-[12px] font-bold text-zinc-900 dark:text-zinc-100">{new Date(o.placed_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    </div>
+                  </td>
+                  <td className="py-6">
+                    <span className="text-[13px] font-black text-zinc-700 dark:text-zinc-300">Rs. {Number(o.total_amount).toLocaleString()}</span>
+                  </td>
+                  <td className="py-6">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest ${
+                      o.status === 'closed' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20' : 
+                      o.status === 'cancelled' ? 'bg-red-50 text-red-600 dark:bg-red-900/20' : 
+                      'bg-orange-50 text-orange-600 dark:bg-orange-900/20'
+                    }`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${
+                        o.status === 'closed' ? 'bg-emerald-500' : 
+                        o.status === 'cancelled' ? 'bg-red-500' : 
+                        'bg-orange-500'
+                      }`} />
+                      {o.status}
+                    </span>
+                  </td>
+                  <td className="py-6 text-right">
+                    <button 
+                      onClick={() => setDrawerOrderId(o.id)}
+                      className="rounded-xl p-2 text-zinc-400 transition-all hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -414,6 +555,20 @@ export default function ShopDetailsPage(props: { params: Promise<{ id: string }>
         reps={reps.filter(r => r.role === 'rep' && r.status === 'active')}
       />
 
+      <AssignTaskModal
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        shop={shop}
+        reps={reps.filter(r => r.role === 'rep' && r.status === 'active')}
+      />
+
+      {drawerOrderId && (
+        <OrderDetailsDrawer 
+            orderId={drawerOrderId} 
+            onClose={() => setDrawerOrderId(null)} 
+            mutateOrders={mutateOrders}
+        />
+      )}
     </div>
   );
 }
@@ -675,4 +830,434 @@ function AssignRepModal({
       </div>
     </div>
   );
+}
+
+function AssignTaskModal({ 
+  isOpen, 
+  onClose, 
+  shop, 
+  reps 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  shop: Shop; 
+  reps: any[] 
+}) {
+  const [loading, setLoading] = useState(false);
+  const toast = useToast();
+  const [formData, setFormData] = useState({
+      title: "",
+      description: "",
+      repCompanyUserId: "",
+      deadline: ""
+  });
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!formData.repCompanyUserId) return toast.error("Please select a rep");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/manager/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          repCompanyUserId: formData.repCompanyUserId,
+          shopId: shop.id,
+          dueAt: formData.deadline ? new Date(formData.deadline).toISOString() : undefined,
+          status: "pending"
+        }),
+      });
+
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || data.message || "Failed to create task");
+
+      toast.success("Task assigned successfully");
+      setFormData({ title: "", description: "", repCompanyUserId: "", deadline: "" });
+      onClose();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to assign task");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (!isOpen) return null;
+
+  const inputClass = "h-12 w-full rounded-2xl border border-zinc-100 bg-zinc-50 px-4 text-[13px] font-medium outline-none transition-all focus:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-100";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-[40px] bg-white p-8 shadow-2xl dark:bg-zinc-900">
+        <h2 className="text-2xl font-black text-zinc-900 dark:text-zinc-100">Assign Task</h2>
+        <p className="mt-1 text-sm font-medium text-zinc-500">Create a new directive for {shop.name}.</p>
+        
+        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Task Title</label>
+            <input
+              required
+              value={formData.title}
+              onChange={e => setFormData({ ...formData, title: e.target.value })}
+              className={inputClass}
+              placeholder="e.g. Conduct inventory check"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Description</label>
+            <textarea
+              required
+              value={formData.description}
+              onChange={e => setFormData({ ...formData, description: e.target.value })}
+              className={`${inputClass} h-24 resize-none py-3`}
+              placeholder="Detailed instructions..."
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Assign To</label>
+                <select
+                  required
+                  value={formData.repCompanyUserId}
+                  onChange={e => setFormData({ ...formData, repCompanyUserId: e.target.value })}
+                  className={inputClass}
+                >
+                  <option value="">Select Rep...</option>
+                  {reps.map(r => (
+                    <option key={r.company_user_id} value={r.company_user_id}>{r.full_name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Due Date (Optional)</label>
+                <input
+                  type="datetime-local"
+                  value={formData.deadline}
+                  onChange={e => setFormData({ ...formData, deadline: e.target.value })}
+                  className={inputClass}
+                />
+              </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-2xl px-6 py-3 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="rounded-2xl bg-[#f4a261] px-8 py-3 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/20 transition-transform hover:scale-105 hover:bg-[#e79450] disabled:opacity-70"
+            >
+              {loading ? "Assigning..." : "Assign Task"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function OrderDetailsDrawer({ orderId, onClose, mutateOrders }: { orderId: string; onClose: () => void; mutateOrders: () => void }) {
+    const toast = useToast();
+    const [working, setWorking] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editNotes, setEditNotes] = useState("");
+    const [editItems, setEditItems] = useState<{ productId: string; name: string; sku: string; quantity: number; unitPrice: number; notes: string | null }[]>([]);
+
+    const { data: orderData, mutate: mutateDetail } = useSWR<{ ok: boolean; order: OrderDetail }>(
+        `/api/manager/orders/${orderId}`,
+        fetcher
+    );
+
+    const { data: productsData } = useSWR<{ ok: boolean; products: Product[] }>(
+        isEditing ? "/api/manager/products" : null,
+        fetcher
+    );
+
+    const order = orderData?.order;
+    const products = productsData?.products || [];
+
+    useEffect(() => {
+        if (order && !isEditing) {
+            setEditNotes(order.notes || "");
+            setEditItems((order.items || []).map(i => ({
+                productId: i.product_id || "",
+                name: i.product_name,
+                sku: i.product_sku || "",
+                quantity: Number(i.quantity),
+                unitPrice: Number(i.unit_price),
+                notes: i.notes
+            })));
+        }
+    }, [order, isEditing]);
+
+    async function transition(nextStatus: string) {
+        setWorking(true);
+        const res = await fetch(`/api/manager/orders/${orderId}`, {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ status: nextStatus }),
+        });
+        const data = await res.json();
+        setWorking(false);
+        if (data.ok) {
+            toast.success(`Order moving to ${nextStatus}`);
+            mutateOrders();
+            mutateDetail();
+            if (nextStatus === "closed" || nextStatus === "cancelled") onClose();
+        } else {
+            toast.error(data.error || "Update failed");
+        }
+    }
+
+    async function handleSaveEdits() {
+        if (editItems.length === 0) return toast.error("At least one item is required");
+        setWorking(true);
+        const res = await fetch(`/api/manager/orders/${orderId}`, {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+                notes: editNotes,
+                items: editItems.map(i => ({
+                    productId: i.productId,
+                    productName: i.name,
+                    productSku: i.sku,
+                    quantity: i.quantity,
+                    unitPrice: i.unitPrice,
+                    notes: i.notes || undefined
+                }))
+            }),
+        });
+        const data = await res.json();
+        setWorking(false);
+        if (data.ok) {
+            toast.success("Order updated successfully");
+            setIsEditing(false);
+            mutateOrders();
+            mutateDetail();
+        } else {
+            toast.error(data.message || "Failed to update order");
+        }
+    }
+
+    const [productSearch, setProductSearch] = useState("");
+    const filteredProducts = useMemo(() => {
+        if (!productSearch) return products;
+        const q = productSearch.toLowerCase();
+        return products.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
+    }, [products, productSearch]);
+
+    const addItem = (pId: string) => {
+        const p = products.find(x => x.id === pId);
+        if (!p) return;
+        setEditItems(prev => [...prev, {
+            productId: p.id,
+            name: p.name,
+            sku: p.sku,
+            quantity: 1,
+            unitPrice: Number(p.current_price || 0),
+            notes: null
+        }]);
+    };
+
+    if (!order) return null;
+
+    const inputClass = "w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-900 outline-none ring-zinc-500/10 transition-all focus:border-zinc-400 focus:ring-4 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100";
+
+    return (
+        <div className="fixed inset-0 z-50 flex justify-end bg-zinc-900/60 backdrop-blur-sm" onClick={onClose}>
+            <div className="h-full w-full max-w-xl bg-white p-8 shadow-2xl dark:bg-zinc-900 overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <div className="mb-10 flex items-center justify-between">
+                    <div>
+                        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest ${STATUS_CONFIG[order.status].color}`}>
+                            <span className={`h-1 w-1 rounded-full ${STATUS_CONFIG[order.status].dot}`} />
+                            {STATUS_CONFIG[order.status].label}
+                        </span>
+                        <h2 className="mt-3 text-2xl font-black text-zinc-900 dark:text-zinc-100">{order.order_number}</h2>
+                    </div>
+                    <div className="flex gap-2">
+                         {!isEditing && (order.status === "received" || order.status === "processing") && (
+                            <button 
+                                onClick={() => setIsEditing(true)}
+                                className="rounded-full bg-zinc-50 p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors"
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </button>
+                        )}
+                        <button onClick={onClose} className="rounded-full bg-zinc-50 p-2 text-zinc-400 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div className="space-y-10">
+                    <section className="grid grid-cols-2 gap-8">
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Client / Shop</p>
+                            <p className="mt-1 text-[14px] font-black text-zinc-900 dark:text-zinc-100">{order.shop_name || order.lead_name || "Direct Sale"}</p>
+                            <p className="text-[12px] font-medium text-zinc-500 mt-0.5">{order.shop_address || "No address provided"}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Placed By</p>
+                            <p className="mt-1 text-[14px] font-black text-zinc-900 dark:text-zinc-100">{order.placed_by_name || "Field Agent"}</p>
+                            <p className="text-[12px] font-medium text-zinc-500 mt-0.5">{new Date(order.placed_at).toLocaleString()}</p>
+                        </div>
+                    </section>
+
+                    <section className="rounded-[24px] border border-zinc-100 bg-zinc-50/20 p-6 dark:border-zinc-800 dark:bg-zinc-800/20">
+                        <div className="flex flex-col gap-4 mb-6">
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Line Items</h3>
+                            {isEditing && (
+                                <div className="space-y-2">
+                                    <div className="relative">
+                                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                        <input 
+                                            type="text" 
+                                            placeholder="Search products..." 
+                                            className="w-full rounded-lg border border-zinc-200 bg-white pl-8 pr-4 py-2 text-[11px] font-bold outline-none dark:bg-zinc-800 dark:border-zinc-700"
+                                            value={productSearch}
+                                            onChange={e => setProductSearch(e.target.value)}
+                                        />
+                                    </div>
+                                    <select 
+                                        className="w-full text-[11px] font-bold bg-white border border-zinc-200 rounded-lg px-3 py-2 outline-none dark:bg-zinc-800 dark:border-zinc-700" 
+                                        onChange={e => { if(e.target.value) addItem(e.target.value); e.target.value = ""; setProductSearch(""); }}
+                                    >
+                                        <option value="">{productSearch ? `Found ${filteredProducts.length} results...` : "+ Select Product to Add"}</option>
+                                        {filteredProducts.map(p => <option key={p.id} value={p.id}>[{p.sku}] {p.name}</option>)}
+                                    </select>
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div className="space-y-4">
+                            {isEditing ? (
+                                editItems.map((item, idx) => (
+                                    <div key={idx} className="flex items-center justify-between group">
+                                    <div className="flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[13px] font-black text-indigo-600 dark:text-indigo-400 shrink-0">[{item.sku}]</span>
+                                                <p className="text-[13px] font-bold text-zinc-900 dark:text-zinc-100 truncate">{item.name}</p>
+                                            </div>
+                                            <div className="flex items-center gap-3 mt-1">
+                                                <input 
+                                                    type="number" 
+                                                    min="1" 
+                                                    className="w-16 rounded-lg border border-zinc-100 bg-zinc-50 px-2 py-1 text-xs font-bold text-zinc-600 focus:bg-white dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300" 
+                                                    value={item.quantity} 
+                                                    onChange={e => {
+                                                        const next = [...editItems];
+                                                        next[idx].quantity = Number(e.target.value);
+                                                        setEditItems(next);
+                                                    }}
+                                                />
+                                                <span className="text-[11px] font-bold text-zinc-400">× {order.currency_code} {item.unitPrice.toLocaleString()}</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-right flex items-center gap-4">
+                                            <span className="text-[13px] font-black text-zinc-900 dark:text-zinc-100">{order.currency_code} {(item.quantity * item.unitPrice).toLocaleString()}</span>
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setEditItems(prev => prev.filter((_, i) => i !== idx))}
+                                                className="text-zinc-300 hover:text-rose-500 transition-colors"
+                                            >
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                (order.items || []).map(item => (
+                                    <div key={item.id} className="flex items-center justify-between">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[13px] font-black text-indigo-600 dark:text-indigo-400">[{item.product_sku}]</span>
+                                                <p className="text-[13px] font-bold text-zinc-900 dark:text-zinc-100">{item.product_name}</p>
+                                            </div>
+                                            <p className="text-[11px] font-medium text-zinc-400">Qty: {Number(item.quantity)} × {order.currency_code} {Number(item.unit_price).toLocaleString()}</p>
+                                        </div>
+                                        <span className="text-[13px] font-black text-zinc-900 dark:text-zinc-100">
+                                            {order.currency_code} {Number(item.line_total).toLocaleString()}
+                                        </span>
+                                    </div>
+                                ))
+                            )}
+                            
+                            {((!isEditing && (!order.items || order.items.length === 0)) || (isEditing && editItems.length === 0)) && (
+                                <div className="py-6 text-center border-2 border-dashed border-zinc-100 rounded-2xl dark:border-zinc-800">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-300">No products listed</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="mt-6 border-t border-zinc-100 pt-6 flex justify-end dark:border-zinc-800">
+                            <div className="text-right">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Order Total</p>
+                                <p className="text-2xl font-black text-zinc-900 dark:text-zinc-100">
+                                    {order.currency_code} {isEditing 
+                                        ? editItems.reduce((acc, i) => acc + (i.quantity * i.unitPrice), 0).toLocaleString()
+                                        : Number(order.total_amount).toLocaleString()
+                                    }
+                                </p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section>
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-3">Customer Notes</h3>
+                        {isEditing ? (
+                            <textarea 
+                                className={`${inputClass} h-32 resize-none`} 
+                                value={editNotes} 
+                                onChange={e => setEditNotes(e.target.value)} 
+                                placeholder="Edit order notes..." 
+                            />
+                        ) : (
+                            order.notes && (
+                                <div className="rounded-2xl border-l-4 border-orange-200 bg-orange-50/30 p-4 dark:bg-amber-900/10">
+                                    <p className="text-[13px] font-medium text-zinc-600 dark:text-zinc-400">{order.notes}</p>
+                                </div>
+                            )
+                        )}
+                        {!isEditing && !order.notes && (
+                            <p className="text-[11px] font-bold text-zinc-300 italic">No notes provided</p>
+                        )}
+                    </section>
+
+                    <div className="pt-10 border-t border-zinc-100 flex flex-col gap-3 dark:border-zinc-800">
+                        {isEditing ? (
+                            <>
+                                <button onClick={handleSaveEdits} disabled={working} className="h-14 w-full rounded-2xl bg-emerald-600 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-600/20 hover:brightness-110">
+                                    {working ? "Saving Changes..." : "Save Changes"}
+                                </button>
+                                <button onClick={() => setIsEditing(false)} disabled={working} className="h-14 w-full rounded-2xl border border-zinc-200 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:bg-zinc-50">Cancel Editing</button>
+                            </>
+                        ) : (
+                            <>
+                                {order.status === "received" && (
+                                    <button onClick={() => transition("processing")} disabled={working} className="h-14 w-full rounded-2xl bg-[#f4a261] text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-[#f4a261]/20 hover:brightness-110">Start Processing</button>
+                                )}
+                                {order.status === "processing" && (
+                                    <button onClick={() => transition("shipped")} disabled={working} className="h-14 w-full rounded-2xl bg-indigo-600 text-[11px] font-black uppercase tracking-widest text-white shadow-lg hover:brightness-110">Mark as Dispatched</button>
+                                )}
+                                {order.status === "shipped" && (
+                                    <button onClick={() => transition("closed")} disabled={working} className="h-14 w-full rounded-2xl bg-emerald-600 text-[11px] font-black uppercase tracking-widest text-white shadow-lg hover:brightness-110">Complete Order</button>
+                                )}
+                                <button onClick={onClose} className="h-14 w-full rounded-2xl border border-zinc-200 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:bg-zinc-50">Close Detail</button>
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 }

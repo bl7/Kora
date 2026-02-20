@@ -72,6 +72,7 @@ export default function ShopsPage() {
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [viewVisitsShop, setViewVisitsShop] = useState<Shop | null>(null);
   const [searchInput, setSearchInput] = useState("");
+  const [regionFilter, setRegionFilter] = useState("all");
   const [page, setPage] = useState(1);
   const limit = 10;
   
@@ -82,11 +83,11 @@ export default function ShopsPage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // If search changes, reset page
-  useEffect(() => { setPage(1); }, [debouncedSearch]);
+  // If search or region changes, reset page
+  useEffect(() => { setPage(1); }, [debouncedSearch, regionFilter]);
 
   const { data: shopsData, mutate: mutateShops } = useSWR<ShopListResponse>(
-    `/api/manager/shops?page=${page}&limit=${limit}&q=${encodeURIComponent(debouncedSearch)}`,
+    `/api/manager/shops?page=${page}&limit=${limit}&q=${encodeURIComponent(debouncedSearch)}${regionFilter !== "all" ? "&regionId=" + regionFilter : ""}`,
     fetcher
   );
   
@@ -231,6 +232,17 @@ export default function ShopsPage() {
                     Visited Today
                 </button>
             </div>
+            <div className="flex flex-wrap items-center gap-4">
+                <select
+                    value={regionFilter}
+                    onChange={(e) => setRegionFilter(e.target.value)}
+                    className="h-11 rounded-xl border border-zinc-100 bg-zinc-50/50 px-4 text-xs font-bold outline-none ring-zinc-500/10 transition-all focus:border-zinc-300 focus:ring-4 dark:border-zinc-800 dark:bg-zinc-800/40"
+                >
+                    <option value="all">All Regions</option>
+                    {regions.map(r => (
+                        <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                </select>
                 <div className="relative">
                     <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     <input 
@@ -241,6 +253,7 @@ export default function ShopsPage() {
                         className="h-11 w-full rounded-xl border border-zinc-100 bg-zinc-50/50 pl-11 pr-4 text-xs font-bold outline-none ring-zinc-500/10 transition-all focus:border-zinc-300 focus:ring-4 dark:border-zinc-800 dark:bg-zinc-800/40 md:w-64"
                     />
                 </div>
+            </div>
         </div>
 
         <div className="overflow-x-auto">
