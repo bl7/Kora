@@ -147,12 +147,18 @@ export default function Home() {
           <p className="mx-auto mt-7 max-w-2xl text-[clamp(0.95rem,1.3vw,1.35rem)] leading-[1.5] text-zinc-600 dark:text-zinc-400 animate-in fade-in slide-in-from-bottom-4 duration-700" style={{ animationDelay: "0.3s" }}>
             SalesSuite detects shop arrivals using geofencing, logs visits with time and duration, and lets reps submit orders with totals, straight to back office.
           </p>
-          <div className="mt-8 flex items-center justify-center animate-in fade-in slide-in-from-bottom-4 duration-700" style={{ animationDelay: "0.4s" }}>
+          <div className="mt-8 flex flex-col items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-700" style={{ animationDelay: "0.4s" }}>
             <Link
               href="#contact"
               className="rounded-full bg-zinc-800 px-11 py-3 text-[17px] font-medium text-white transition-all duration-300 hover:scale-105 hover:shadow-lg dark:bg-zinc-100 dark:text-zinc-900"
             >
               Request demo
+            </Link>
+            <Link
+              href="#how-it-works"
+              className="text-[14px] text-zinc-500 underline underline-offset-4 transition-colors hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+            >
+              See how it works ↓
             </Link>
           </div>
 
@@ -171,6 +177,7 @@ export default function Home() {
                 width={900}
                 height={900}
                 className="absolute left-1/2 top-[52%] z-20 h-auto w-[min(100vw,120vh)] max-w-[900px] -translate-x-1/2 -translate-y-1/2 sm:w-[min(145vw,150vh)] sm:max-w-none"
+                style={{ filter: "drop-shadow(0 32px 64px rgba(0,0,0,0.22)) drop-shadow(0 8px 24px rgba(0,0,0,0.14))" }}
               />
             </div>
           </div>
@@ -208,29 +215,22 @@ export default function Home() {
         </ScrollSection>
 
         {/* How it works strip */}
-        <ScrollSection id="how-it-works" className="mx-auto mt-16 max-w-4xl">
-          <div className="grid grid-cols-3 gap-6 rounded-2xl border border-zinc-200 bg-white px-8 py-6 dark:border-zinc-700 dark:bg-zinc-800">
-            <div className="text-center">
-              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-xl font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300">
-                1
+        <ScrollSection id="how-it-works" className="mx-auto mt-16 max-w-4xl px-4">
+          <div className="relative flex items-start justify-between gap-0">
+            {/* connecting line */}
+            <div className="absolute left-[calc(16.67%)] right-[calc(16.67%)] top-5 h-px bg-zinc-200 dark:bg-zinc-700" />
+            {[{n:"1",label:"Arrive",sub:"Rep enters shop geofence"},{n:"2",label:"Log visit",sub:"Time, duration & notes captured"},{n:"3",label:"Send order",sub:"Items & totals straight to back office"}].map((step) => (
+              <div key={step.n} className="relative z-10 flex flex-1 flex-col items-center text-center px-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900 text-[13px] font-bold text-white dark:bg-zinc-100 dark:text-zinc-900">
+                  {step.n}
+                </div>
+                <p className="mt-3 text-[15px] font-bold text-zinc-900 dark:text-zinc-100">{step.label}</p>
+                <p className="mt-1 text-[12px] leading-snug text-zinc-500 dark:text-zinc-400">{step.sub}</p>
               </div>
-              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Arrive</p>
-            </div>
-            <div className="text-center">
-              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-xl font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300">
-                2
-              </div>
-              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Log visit</p>
-            </div>
-            <div className="text-center">
-              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-xl font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300">
-                3
-              </div>
-              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Send order</p>
-            </div>
+            ))}
           </div>
-          <p className="mx-auto mt-6 max-w-2xl text-center text-sm text-zinc-600 dark:text-zinc-400">
-            Tracking is configurable, SalesSuite focuses on visit verification during working routes, not personal surveillance.
+          <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-zinc-500 dark:text-zinc-400">
+            Tracking is configurable. SalesSuite focuses on visit verification during working routes, not personal surveillance.
           </p>
         </ScrollSection>
 
@@ -247,7 +247,7 @@ export default function Home() {
             </p>
           </div>
           {/* Image — light/dark variants, single container to avoid layout shift */}
-          <div className="mt-12 mx-auto w-full max-w-3xl" style={{ position: "relative" }}>
+          <div className="mt-12 mx-auto w-full max-w-4xl" style={{ position: "relative" }}>
             {/* Glow bed — only visible in dark mode */}
             <div
               className="hidden dark:block"
@@ -301,9 +301,9 @@ export default function Home() {
             Teams trust SalesSuite
           </h3>
           <div className="mt-8 grid gap-3 md:grid-cols-3">
-            <QuoteCard quote="We finally have proof of visits, not just promises." author="Regional Manager, Paint Distribution" delay="0ms" />
-            <QuoteCard quote="Lead follow-ups are cleaner because every note is logged." author="Sales Ops, FMCG" delay="100ms" />
-            <QuoteCard quote="Orders come through with totals and item lists, no more messy calls." author="Back Office Lead, Wholesale" delay="200ms" />
+            <QuoteCard quote="We finally have proof of visits, not just promises." author="Roshan K. — Regional Manager, Paint Distributor" delay="0ms" />
+            <QuoteCard quote="Lead follow-ups are cleaner because every note is logged on site." author="Priya S. — Sales Ops Lead, FMCG Distributor" delay="100ms" />
+            <QuoteCard quote="Orders come through with totals and item lists. No more messy calls to the office." author="Anita M. — Back Office Lead, Wholesale" delay="200ms" />
           </div>
         </ScrollSection>
 
@@ -485,7 +485,7 @@ function FAQItem(props: { question: string; answer: string }) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className={`${displaySerif.className} flex w-full items-center justify-between px-7 py-5 text-left text-[22px] text-zinc-800 dark:text-zinc-100 transition-colors hover:text-zinc-900 dark:hover:text-zinc-50`}
+        className={`${displaySerif.className} flex w-full items-center justify-between px-7 py-5 text-left text-[26px] text-zinc-800 dark:text-zinc-100 transition-colors hover:text-zinc-900 dark:hover:text-zinc-50`}
       >
         <span>{props.question}</span>
         <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-[14px] text-zinc-500 transition-all duration-300 dark:bg-zinc-700 dark:text-zinc-300 ${open ? "rotate-180" : ""}`}>
@@ -615,19 +615,6 @@ function ContactForm() {
         />
       </div>
 
-      <select
-        required
-        value={teamSize}
-        onChange={(e) => setTeamSize(e.target.value)}
-        className="w-full rounded-2xl border border-zinc-200 bg-[#f7f7f8] px-5 py-4 text-[18px] text-zinc-800 focus:border-zinc-400 focus:bg-white focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500"
-      >
-        <option value="">Team size</option>
-        <option value="1-5">1–5 reps</option>
-        <option value="6-15">6–15 reps</option>
-        <option value="16-50">16–50 reps</option>
-        <option value="50+">50+ reps</option>
-      </select>
-
       <textarea
         required
         value={message}
@@ -637,6 +624,18 @@ function ContactForm() {
         className="w-full rounded-2xl border border-zinc-200 bg-[#f7f7f8] px-5 py-4 text-[18px] text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-400 focus:bg-white focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
       />
 
+      <select
+        value={teamSize}
+        onChange={(e) => setTeamSize(e.target.value)}
+        className="w-full rounded-2xl border border-zinc-200 bg-[#f7f7f8] px-5 py-4 text-[18px] text-zinc-800 focus:border-zinc-400 focus:bg-white focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500"
+      >
+        <option value="">Team size (optional)</option>
+        <option value="1-5">1–5 reps</option>
+        <option value="6-15">6–15 reps</option>
+        <option value="16-50">16–50 reps</option>
+        <option value="50+">50+ reps</option>
+      </select>
+
       <button
         type="submit"
         disabled={loading}
@@ -644,6 +643,9 @@ function ContactForm() {
       >
         {loading ? "Sending..." : "Request demo"}
       </button>
+      <p className="text-center text-[13px] text-zinc-400 dark:text-zinc-500">
+        We reply within 24 hours. No sales pressure.
+      </p>
     </form>
   );
 }
