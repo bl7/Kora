@@ -162,7 +162,7 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="relative mx-auto mt-12 h-[90vh] w-full overflow-hidden">
+          <div className="relative mx-auto mt-12 h-[90vh] w-full">
             <div className="relative h-full w-full pt-[60px] pb-[60px]">
               <div
                 className="absolute left-1/2 top-[33%] z-10 h-[46vh] w-[min(46vw,100%)] -translate-x-1/2 rounded-[999px] opacity-20"
@@ -179,6 +179,8 @@ export default function Home() {
                 className="absolute left-1/2 top-[52%] z-20 h-auto w-[min(100vw,120vh)] max-w-[900px] -translate-x-1/2 -translate-y-1/2 sm:w-[min(145vw,150vh)] sm:max-w-none"
                 style={{ filter: "drop-shadow(0 32px 64px rgba(0,0,0,0.22)) drop-shadow(0 8px 24px rgba(0,0,0,0.14))" }}
               />
+              {/* Seamless fade — no overflow-hidden so this bleeds past the container */}
+              <div className="absolute bottom-0 left-0 right-0 z-10 h-80 bg-gradient-to-b from-transparent to-[#f3f2f6] dark:to-[#0d1117]" />
             </div>
           </div>
         </section>
