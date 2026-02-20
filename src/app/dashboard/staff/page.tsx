@@ -279,6 +279,21 @@ export default function StaffPage() {
     mutateStaff();
   }
 
+  async function handleDelete(s: Staff) {
+    if (!confirm(`Are you sure you want to permanently delete ${s.full_name}?`)) return;
+    setMenuOpenId(null);
+    setWorking(true);
+    const res = await fetch(`/api/manager/staff/${s.company_user_id}`, { method: "DELETE" });
+    const data = (await res.json()) as { ok: boolean; error?: string };
+    setWorking(false);
+    if (!res.ok || !data.ok) {
+      toast.error(data.error ?? "Could not delete staff");
+      return;
+    }
+    toast.success("Staff deleted.");
+    mutateStaff();
+  }
+
   const [activeReps, setActiveReps] = useState<Staff[]>([]);
   const [deactivatePreview, setDeactivatePreview] = useState<{
     shops_only_this_rep: { shop_id: string; shop_name: string }[];
@@ -608,6 +623,16 @@ export default function StaffPage() {
                     className="w-full px-3 py-2 text-left text-xs text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:text-zinc-300 dark:hover:bg-zinc-700"
                   >
                     Activate
+                  </button>
+                )}
+                {(s.status === "invited" || s.status === "inactive") && (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(s)}
+                    disabled={working}
+                    className="w-full px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-500 dark:hover:bg-red-900/20"
+                  >
+                    Delete permanently
                   </button>
                 )}
               </div>
