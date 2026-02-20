@@ -28,6 +28,19 @@ const REASON_COLORS: Record<string, string> = {
   other: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
 };
 
+function formatDuration(startStr?: string | null, endStr?: string | null) {
+  if (!startStr) return "—";
+  const start = new Date(startStr).getTime();
+  const end = endStr ? new Date(endStr).getTime() : new Date().getTime();
+  const diff = Math.max(0, end - start);
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "< 1m";
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  const remainingMins = mins % 60;
+  return `${hrs}h ${remainingMins}m`;
+}
+
 type Tab = "all" | "exceptions" | "pending";
 
 export default function VisitsPage() {
@@ -233,6 +246,7 @@ function VisitsPageInner() {
                 <thead>
                   <tr className="border-b border-zinc-50 dark:border-zinc-800/60">
                     <th className="pb-5 pl-8 pt-8 text-[10px] font-black uppercase tracking-widest text-zinc-400">Time</th>
+                    <th className="pb-5 pt-8 text-[10px] font-black uppercase tracking-widest text-zinc-400">Duration</th>
                     <th className="pb-5 pt-8 text-[10px] font-black uppercase tracking-widest text-zinc-400">Rep & Shop</th>
                     <th className="pb-5 pt-8 text-[10px] font-black uppercase tracking-widest text-zinc-400">Verification</th>
                     <th className="pb-5 pt-8 text-[10px] font-black uppercase tracking-widest text-zinc-400">Status</th>
@@ -241,9 +255,9 @@ function VisitsPageInner() {
                 </thead>
                 <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/40">
                   {allLoading ? (
-                    <tr><td colSpan={5} className="py-10 text-center text-sm font-medium text-zinc-400">Loading visits...</td></tr>
+                    <tr><td colSpan={6} className="py-10 text-center text-sm font-medium text-zinc-400">Loading visits...</td></tr>
                   ) : filteredAll.length === 0 ? (
-                    <tr><td colSpan={5} className="py-10 text-center text-sm font-medium text-zinc-400">No visits found.</td></tr>
+                    <tr><td colSpan={6} className="py-10 text-center text-sm font-medium text-zinc-400">No visits found.</td></tr>
                   ) : (
                     filteredAll.map(v => (
                       <tr key={v.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20">
@@ -253,6 +267,11 @@ function VisitsPageInner() {
                           </p>
                           <p className="text-[10px] font-medium text-zinc-400">
                             {new Date(v.started_at).toLocaleDateString()}
+                          </p>
+                        </td>
+                        <td className="py-5">
+                          <p className={`text-[13px] font-bold ${v.ended_at ? 'text-zinc-900 dark:text-zinc-100' : 'text-blue-500'}`}>
+                            {formatDuration(v.started_at, v.ended_at)}
                           </p>
                         </td>
                         <td className="py-5">
@@ -513,7 +532,7 @@ function ExceptionList({
                       <span className="text-[13px] font-bold text-zinc-600 dark:text-zinc-400">{v.shop_name}</span>
                     </div>
                     <p className="mt-0.5 text-[11px] font-medium text-zinc-400">
-                      {new Date(v.started_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
+                      {new Date(v.started_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })} • <span className={v.ended_at ? "" : "text-blue-500 font-bold"}>{formatDuration(v.started_at, v.ended_at)}</span> {v.ended_at ? "" : "(Ongoing)"}
                     </p>
                   </div>
                   <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${REASON_COLORS[v.exception_reason || "other"]}`}>
