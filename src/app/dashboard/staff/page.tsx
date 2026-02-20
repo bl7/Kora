@@ -132,7 +132,7 @@ export default function StaffPage() {
   const [viewVisitsStaff, setViewVisitsStaff] = useState<Staff | null>(null);
   const [working, setWorking] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
 
@@ -516,7 +516,11 @@ export default function StaffPage() {
                       <div className="flex items-center justify-end font-medium">
                         <button
                           type="button"
-                          onClick={() => setMenuOpenId((id) => (id === s.company_user_id ? null : s.company_user_id))}
+                          ref={menuOpenId === s.company_user_id ? menuRef : null}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuOpenId((id) => (id === s.company_user_id ? null : s.company_user_id))
+                          }}
                           className="rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-700"
                         >
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
