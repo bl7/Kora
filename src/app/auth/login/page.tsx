@@ -56,7 +56,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="h-screen overflow-hidden bg-[#f3f2f6] px-6 py-6 dark:bg-[#0d1117]">
+    <div className="min-h-screen overflow-y-auto bg-[#f3f2f6] px-6 py-6 dark:bg-[#0d1117]">
       <div className="mx-auto flex h-full max-w-2xl items-center">
         <div className="w-full text-center">
           <div className="mb-6 flex justify-center">
@@ -204,7 +204,7 @@ function EyeOffIcon() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="h-screen overflow-hidden bg-[#f3f2f6] px-6 py-6 dark:bg-[#0d1117]">
+      <div className="min-h-screen overflow-y-auto bg-[#f3f2f6] px-6 py-6 dark:bg-[#0d1117]">
         <div className="mx-auto flex h-full max-w-2xl items-center">
           <div className="w-full text-center">
             <h1 className="text-[64px] leading-none font-serif text-zinc-900 md:text-[56px] dark:text-zinc-100">

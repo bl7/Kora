@@ -235,6 +235,67 @@ export default function Home() {
         </ScrollSection>
 
 
+        {/* Nepal-first Offline Section */}
+        <ScrollSection className="mt-32 px-4">
+          <div className="text-center space-y-6">
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-zinc-400">Nepal First</p>
+            <h2 className={`${displaySerif.className} text-[clamp(2.5rem,6vw,5rem)] leading-[0.9] tracking-tight text-zinc-900 dark:text-zinc-100`}>
+              Built for hills, valleys<br />and spotty signal.
+            </h2>
+            <p className="mx-auto max-w-2xl text-lg leading-relaxed text-zinc-500 dark:text-zinc-400">
+              Most sales software assumes a stable 4G connection. Nepal doesn&apos;t. From the Terai plains to mountain districts, our reps operate where connectivity is unreliable at best. SalesSuite stores everything locally first, then syncs the moment signal returns.
+            </p>
+          </div>
+          {/* Image — light/dark variants, single container to avoid layout shift */}
+          <div className="mt-12 mx-auto w-full max-w-3xl" style={{ position: "relative" }}>
+            {/* Glow bed — only visible in dark mode */}
+            <div
+              className="hidden dark:block"
+              style={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: "999px",
+                background: "radial-gradient(ellipse 80% 60% at 50% 50%, rgba(255,255,255,0.06), transparent 70%)",
+                filter: "blur(8px)",
+                zIndex: 0,
+              }}
+            />
+            {/* Light mode image */}
+            <Image
+              src="/hills.png"
+              alt="Nepal hills — SalesSuite works without internet"
+              width={1400}
+              height={900}
+              className="dark:hidden w-full h-auto rounded-3xl"
+              style={{ position: "relative", zIndex: 1 }}
+            />
+            {/* Dark mode image with mask */}
+            <Image
+              src="/dark.png"
+              alt="Nepal hills at night — SalesSuite works without internet"
+              width={1400}
+              height={900}
+              className="hidden dark:block w-full h-auto"
+              style={{
+                position: "relative",
+                zIndex: 1,
+                WebkitMaskImage: "radial-gradient(ellipse 80% 75% at 50% 50%, black 25%, transparent 68%)",
+                maskImage: "radial-gradient(ellipse 80% 75% at 50% 50%, black 25%, transparent 68%)",
+                WebkitMaskRepeat: "no-repeat",
+                maskRepeat: "no-repeat",
+                WebkitMaskSize: "100% 100%",
+                maskSize: "100% 100%",
+              }}
+            />
+          </div>
+          {/* Feature items below, same grid as features section */}
+          <div className="mt-16 grid gap-12 md:grid-cols-3 border-t border-zinc-100 pt-16 dark:border-zinc-800/50">
+            <FeatureItem title="Offline-first" desc="Data writes to the device first. Nothing is lost if the network drops mid-visit or in a dead zone." />
+            <FeatureItem title="Auto-sync on reconnect" desc="Queued visits, orders, and leads sync silently the moment a connection is restored — no manual steps needed." />
+            <FeatureItem title="GPS always on" desc="Geofence detection and visit logging continue using on-device GPS even without a data connection." />
+          </div>
+        </ScrollSection>
+
         <ScrollSection className="mt-16 rounded-[2rem] bg-[#ebe8f2] px-5 py-10 dark:bg-zinc-900">
           <h3 className={`${displaySerif.className} text-center text-4xl leading-tight`}>
             Teams trust SalesSuite
