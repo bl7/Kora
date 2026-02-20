@@ -574,7 +574,7 @@ export default function StaffPage() {
                 >
                   Change role
                 </button>
-                {(s.status === "invited" || !s.email_verified_at) && (
+                {s.status === "invited" && (
                   <button
                     type="button"
                     onClick={() => handleResendInvite(s)}
