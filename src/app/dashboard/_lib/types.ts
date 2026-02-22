@@ -96,6 +96,7 @@ export type Lead = {
   shop_name?: string | null;
   assigned_rep_company_user_id: string | null;
   assigned_rep_name?: string | null;
+  created_by_name?: string | null;
   notes: string | null;
   created_at: string;
   converted_at?: string | null;

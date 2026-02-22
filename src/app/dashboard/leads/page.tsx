@@ -163,6 +163,7 @@ export default function LeadsPage() {
                 <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">CONTACT</th>
                 <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">STATUS</th>
                 <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">ASSIGNED SHOP</th>
+                <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">ADDED BY</th>
                 <th className="pb-5 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400">OPTION</th>
               </tr>
             </thead>
@@ -187,6 +188,10 @@ export default function LeadsPage() {
                   <td className="py-6">
                     <p className="text-[12px] font-black text-zinc-900 dark:text-zinc-100">{l.assigned_rep_name || "Unassigned"}</p>
                     <p className="text-[11px] font-medium text-zinc-400">{l.shop_name || "No Hub"}</p>
+                  </td>
+                  <td className="py-6">
+                    <p className="text-[12px] font-black text-zinc-900 dark:text-zinc-100">{l.created_by_name || "System"}</p>
+                    <p className="text-[11px] font-medium text-zinc-400 capitalize">{new Date(l.created_at).toLocaleDateString()}</p>
                   </td>
                   <td className="py-6 text-right">
                     <div className="flex items-center justify-end gap-3">
