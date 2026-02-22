@@ -894,7 +894,7 @@ function OrderDetailsDrawer({ orderId, onClose, mutateOrders }: { orderId: strin
                                 })()
                             ) : (
                                 (() => {
-                                    const itemsSubtotal = Number(order.subtotal ?? (order.items || []).reduce((acc, i) => acc + Number(i.line_total), 0));
+                                    const itemsSubtotal = Number(order.subtotal || 0);
                                     const dAmt = Number(order.discount_amount || 0);
                                     const discVal = calcDiscount(itemsSubtotal, dAmt, order.discount_type);
                                     return (
