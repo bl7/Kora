@@ -6,6 +6,15 @@ export function proxy(request: NextRequest) {
   const hasSession = Boolean(request.cookies.get(SESSION_COOKIE_NAME)?.value);
   const { pathname } = request.nextUrl;
 
+  // Protect warehouse routes: require session
+  if (pathname.startsWith("/warehouse/dashboard")) {
+    if (!hasSession) {
+      const loginUrl = new URL("/warehouse/login", request.url);
+      return NextResponse.redirect(loginUrl);
+    }
+    return NextResponse.next();
+  }
+
   // Protect dashboard routes: require session
   if (pathname.startsWith("/dashboard")) {
     if (!hasSession) {
@@ -16,8 +25,9 @@ export function proxy(request: NextRequest) {
   }
 
   // If already logged in, keep users out of auth pages
-  if (pathname.startsWith("/auth") && hasSession) {
+  if ((pathname.startsWith("/auth") || pathname.startsWith("/warehouse/login")) && hasSession) {
     const dashboardUrl = new URL("/dashboard", request.url);
+    // Note: SessionProvider will handle role-based redirection from /dashboard
     return NextResponse.redirect(dashboardUrl);
   }
 
@@ -25,6 +35,6 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/auth/:path*"],
+  matcher: ["/dashboard/:path*", "/auth/:path*", "/warehouse/:path*"],
 };
 

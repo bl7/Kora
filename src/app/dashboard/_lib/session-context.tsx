@@ -36,6 +36,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       router.push("/auth/login");
       return;
     }
+    if (data.user.role === "dispatch_supervisor") {
+      router.replace("/warehouse/dashboard");
+      return;
+    }
     if (data.user.role === "rep") {
       router.replace("/rep-mobile-required");
       return;

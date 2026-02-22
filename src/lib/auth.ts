@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { jwtVerify, SignJWT } from "jose";
 
-export type CompanyRole = "boss" | "manager" | "rep" | "back_office";
+export type CompanyRole = "boss" | "manager" | "rep" | "back_office" | "dispatch_supervisor";
 
 export type SessionPayload = {
   userId: string;

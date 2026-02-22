@@ -17,6 +17,7 @@ const ROLE_OPTIONS = [
   { value: "rep", label: "Rep" },
   { value: "manager", label: "Manager" },
   { value: "back_office", label: "Back office" },
+  { value: "dispatch_supervisor", label: "Dispatch Supervisor" },
   { value: "boss", label: "Admin" },
 ] as const;
 
@@ -495,7 +496,7 @@ export default function StaffPage() {
                         <Link href={`/dashboard/staff/${s.company_user_id}`} className="group cursor-pointer">
                           <div className="text-[14px] font-bold text-zinc-900 group-hover:text-[#f4a261] transition-colors dark:text-zinc-100">{s.full_name}</div>
                           <div className="text-[11px] text-zinc-400 dark:text-zinc-500">
-                             {s.role === "back_office" ? "Back office" : s.role === "boss" ? "Admin" : s.role === "rep" ? "Sales Department" : s.role}
+                             {s.role === "back_office" ? "Back office" : s.role === "boss" ? "Admin" : s.role === "rep" ? "Sales Department" : s.role === "dispatch_supervisor" ? "Dispatch Supervisor" : s.role}
                           </div>
                         </Link>
                       </div>
@@ -734,14 +735,28 @@ function AddStaffModal(props: {
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Phone</label>
-            <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^\d+]/g, "").slice(0, 14))} className={inputClass} placeholder="+977 98XXXXXXXX" />
+            <input 
+              required 
+              type="tel" 
+              value={phone} 
+              onChange={(e) => {
+                let val = e.target.value.replace(/[^\d+]/g, "");
+                if (val.length > 0 && !val.startsWith("+")) {
+                  val = "+977" + val.replace(/^977/, "");
+                }
+                setPhone(val.slice(0, 14));
+              }} 
+              className={inputClass} 
+              placeholder="+977 98XXXXXXXX" 
+            />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Role</label>
-            <select value={role} onChange={(e) => setRole(e.target.value as "rep" | "manager" | "back_office")} className={inputClass}>
+            <select value={role} onChange={(e) => setRole(e.target.value as "rep" | "manager" | "back_office" | "dispatch_supervisor")} className={inputClass}>
               <option value="rep">Rep</option>
               <option value="manager">Manager</option>
               <option value="back_office">Back office</option>
+              <option value="dispatch_supervisor">Dispatch Supervisor</option>
             </select>
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -814,14 +829,28 @@ function EditStaffModal(props: {
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Phone</label>
-            <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^\d+]/g, "").slice(0, 14))} className={inputClass} placeholder="+977 98XXXXXXXX" />
+            <input 
+              required 
+              type="tel" 
+              value={phone} 
+              onChange={(e) => {
+                let val = e.target.value.replace(/[^\d+]/g, "");
+                if (val.length > 0 && !val.startsWith("+")) {
+                  val = "+977" + val.replace(/^977/, "");
+                }
+                setPhone(val.slice(0, 14));
+              }} 
+              className={inputClass} 
+              placeholder="+977 98XXXXXXXX" 
+            />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Role</label>
-            <select value={role} onChange={(e) => setRole(e.target.value as "rep" | "manager" | "back_office")} className={inputClass}>
+            <select value={role} onChange={(e) => setRole(e.target.value as "rep" | "manager" | "back_office" | "dispatch_supervisor")} className={inputClass}>
               <option value="rep">Rep</option>
               <option value="manager">Manager</option>
               <option value="back_office">Back office</option>
+              <option value="dispatch_supervisor">Dispatch Supervisor</option>
             </select>
           </div>
           <div className="flex justify-end gap-2 pt-2">

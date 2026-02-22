@@ -20,6 +20,7 @@ const navGroups: { section: string; items: NavItem[] }[] = [
     section: "Operations",
     items: [
       { label: "Orders", href: "/dashboard/orders", icon: ClipboardIcon },
+      { label: "Warehouse", href: "/warehouse/dashboard", icon: BoxIcon },
       { label: "Leads", href: "/dashboard/leads", icon: TargetIcon },
       { label: "Tasks", href: "/dashboard/tasks", icon: ChecklistIcon },
     ]
@@ -32,6 +33,7 @@ const navGroups: { section: string; items: NavItem[] }[] = [
       { label: "Compliance", href: "/dashboard/compliance", icon: ComplianceIcon },
       { label: "Coverage", href: "/dashboard/coverage", icon: ChartIcon },
       { label: "Performance", href: "/dashboard/performance", icon: TrophyIcon },
+      { label: "Staff Report", href: "/dashboard/staff/report", icon: ReportIcon },
     ]
   },
 
@@ -126,6 +128,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 <p className="mb-1 px-4 text-[9px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-600">{group.section}</p>
               )}
               {group.items.map((item) => {
+                if (item.label === "Warehouse" && session.user.role !== "manager" && session.user.role !== "boss") return null;
                 const active = item.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.href);
                 return (
                   <Link
@@ -355,6 +358,28 @@ function ComplianceIcon({ active }: { active: boolean }) {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" className={active ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400 dark:text-zinc-500"}>
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
       <polyline points="9 12 11 14 15 10" />
+    </svg>
+  );
+}
+
+function ReportIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" className={active ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400 dark:text-zinc-500"}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <polyline points="10 9 9 9 8 9" />
+    </svg>
+  );
+}
+
+function BoxIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" className={active ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400 dark:text-zinc-500"}>
+      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+      <path d="m3.3 7 8.7 5 8.7-5" />
+      <path d="M12 22V12" />
     </svg>
   );
 }

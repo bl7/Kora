@@ -8,7 +8,7 @@ export type MeResponse = {
     fullName: string;
     email: string;
     phone?: string;
-    role: "boss" | "manager" | "rep" | "back_office";
+    role: "boss" | "manager" | "rep" | "back_office" | "dispatch_supervisor";
     companyUserId: string;
   };
   company?: {
@@ -28,7 +28,7 @@ export type Staff = {
   user_id: string;
   full_name: string;
   email: string;
-  role: "boss" | "manager" | "rep" | "back_office";
+  role: "boss" | "manager" | "rep" | "back_office" | "dispatch_supervisor";
   status: "invited" | "active" | "inactive";
   phone: string | null;
   manager_company_user_id: string | null;
@@ -248,5 +248,33 @@ export type ExpenseListResponse = {
   ok: boolean;
   error?: string;
   expenses?: Expense[];
+};
+
+export type StaffReportItem = {
+  rep_id: string;
+  rep_name: string;
+  orders_count: number;
+  total_sales: number;
+  attendance_count: number;
+  leads_count: number;
+  visit_count: number;
+  compliance_count: number;
+  compliance_approved_count: number;
+  expenses_sum: number;
+};
+
+export type StaffReportResponse = {
+  ok: boolean;
+  error?: string;
+  report?: StaffReportItem[];
+};
+
+export type StaffPerformanceDetailResponse = {
+  ok: boolean;
+  attendance: AttendanceLog[];
+  visits: Visit[];
+  orders: Order[];
+  leads: Lead[];
+  expenses: { id: string, amount: number, category: string, date: string, description: string | null }[];
 };
 
