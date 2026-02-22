@@ -232,3 +232,20 @@ export type CoverageReportResponse = {
   error?: string;
   report?: CoverageReportItem[];
 };
+
+export type Expense = {
+  id: string;
+  rep_company_user_id: string;
+  amount: number;
+  category: string;
+  description: string | null;
+  date: string;
+  rep_name: string;
+};
+
+export type ExpenseListResponse = {
+  ok: boolean;
+  error?: string;
+  expenses?: Expense[];
+};
+

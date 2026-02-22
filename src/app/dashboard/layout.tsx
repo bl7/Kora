@@ -28,11 +28,13 @@ const navGroups: { section: string; items: NavItem[] }[] = [
     section: "Field",
     items: [
       { label: "Visits", href: "/dashboard/visits", icon: MapPinIcon },
+      { label: "Expenses", href: "/dashboard/expenses", icon: WalletIcon },
       { label: "Compliance", href: "/dashboard/compliance", icon: ComplianceIcon },
       { label: "Coverage", href: "/dashboard/coverage", icon: ChartIcon },
       { label: "Performance", href: "/dashboard/performance", icon: TrophyIcon },
     ]
   },
+
   {
     section: "Admin",
     items: [
@@ -305,6 +307,15 @@ function MapPinIcon({ active }: { active: boolean }) {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" className={active ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400 dark:text-zinc-500"}>
       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
       <circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+}
+
+function WalletIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" className={active ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400 dark:text-zinc-500"}>
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <line x1="2" y1="10" x2="22" y2="10" />
     </svg>
   );
 }
