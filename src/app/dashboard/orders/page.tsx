@@ -45,6 +45,7 @@ type Order = {
   placed_by_name: string | null;
   placed_by_company_user_id: string | null;
   items_count?: number;
+  subtotal?: string | number;
   items: OrderItem[] | null;
 };
 
@@ -164,15 +165,22 @@ export default function OrdersPage() {
       toast.error("No orders to export");
       return;
     }
-    const headers = ["Order #", "Shop", "Date", "Status", "Total Amount", "Rep"];
-    const rows = orders.map(o => [
-      o.order_number,
-      o.shop_name || "N/A",
-      new Date(o.created_at).toLocaleDateString(),
-      o.status,
-      o.total_amount,
-      o.placed_by_name || "N/A"
-    ]);
+    const headers = ["Order #", "Shop", "Date", "Status", "Subtotal", "Discount", "Total Amount", "Rep"];
+    const rows = orders.map(o => {
+      const subtotal = Number(o.subtotal ?? (o.items || []).reduce((acc, i) => acc + Number(i.line_total), 0));
+      const dAmt = Number(o.discount_amount || 0);
+      const discVal = calcDiscount(subtotal, dAmt, o.discount_type);
+      return [
+        o.order_number,
+        o.shop_name || "N/A",
+        new Date(o.created_at).toLocaleDateString(),
+        o.status,
+        subtotal.toFixed(2),
+        discVal > 0 ? `${o.discount_type === 'percentage' ? dAmt + '%' : dAmt}` : '0',
+        o.total_amount,
+        o.placed_by_name || "N/A"
+      ];
+    });
     const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -255,6 +263,7 @@ export default function OrdersPage() {
                         <th className="pb-5 pl-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">ORDER #</th>
                         <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">CLIENT / SHOP</th>
                         <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">DATE</th>
+                        <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400 text-right">DISCOUNT</th>
                         <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400 text-right">TOTAL</th>
                         <th className="pb-5 text-[10px] font-black uppercase tracking-widest text-zinc-400 text-center">STATUS</th>
                         <th className="pb-5 text-right text-[10px] font-black uppercase tracking-widest text-zinc-400">OPTION</th>
@@ -274,6 +283,15 @@ export default function OrdersPage() {
                             </td>
                             <td className="py-6">
                                 <span className="text-[12px] font-bold text-zinc-500 dark:text-zinc-400">{new Date(o.placed_at).toLocaleDateString()}</span>
+                            </td>
+                            <td className="py-6 text-right">
+                                {Number(o.discount_amount) > 0 ? (
+                                    <span className="text-[11px] font-black text-emerald-600">
+                                        -{o.discount_type === 'percentage' ? `${o.discount_amount}%` : `NPR ${Number(o.discount_amount).toLocaleString()}`}
+                                    </span>
+                                ) : (
+                                    <span className="text-[11px] font-bold text-zinc-300">—</span>
+                                )}
                             </td>
                             <td className="py-6 text-right">
                                 <span className="text-[13px] font-black text-zinc-900 dark:text-zinc-100">
@@ -876,7 +894,7 @@ function OrderDetailsDrawer({ orderId, onClose, mutateOrders }: { orderId: strin
                                 })()
                             ) : (
                                 (() => {
-                                    const itemsSubtotal = (order.items || []).reduce((acc, i) => acc + Number(i.line_total), 0);
+                                    const itemsSubtotal = Number(order.subtotal ?? (order.items || []).reduce((acc, i) => acc + Number(i.line_total), 0));
                                     const dAmt = Number(order.discount_amount || 0);
                                     const discVal = calcDiscount(itemsSubtotal, dAmt, order.discount_type);
                                     return (
