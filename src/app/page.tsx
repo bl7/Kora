@@ -440,7 +440,12 @@ export default function Home() {
             />
             <FooterLinks
               title="Company"
-              links={["About", "Security", "Privacy", "Terms"]}
+              links={[
+                "About",
+                "Security",
+                { label: "Privacy", href: "/privacy" },
+                { label: "Terms", href: "/terms" },
+              ]}
             />
             <FooterLinks title="Connect" links={["Contact", "Support", "WhatsApp"]} />
           </div>
@@ -652,14 +657,22 @@ function ContactForm() {
   );
 }
 
-function FooterLinks(props: { title: string; links: string[] }) {
+function FooterLinks(props: { title: string; links: (string | { label: string; href: string })[] }) {
   return (
     <div>
       <p className="text-sm font-semibold uppercase tracking-wide text-white">{props.title}</p>
       <ul className="mt-3 space-y-2 text-sm text-zinc-400">
-        {props.links.map((item) => (
-          <li key={item}>{item}</li>
-        ))}
+        {props.links.map((item) => {
+          const label = typeof item === "string" ? item : item.label;
+          const content = typeof item === "string" ? (
+            item
+          ) : (
+            <Link href={item.href} className="transition-colors hover:text-white">
+              {item.label}
+            </Link>
+          );
+          return <li key={label}>{content}</li>;
+        })}
       </ul>
     </div>
   );
