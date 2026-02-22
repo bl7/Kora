@@ -60,115 +60,31 @@ export default function StaffReportPage() {
           <p className="text-sm font-bold text-zinc-400">No data found for this period.</p>
         </div>
       ) : (
-        <div className="rounded-[40px] border border-zinc-100 bg-white shadow-sm overflow-hidden dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left min-w-[1000px]">
-              <thead>
-                <tr className="border-b border-zinc-50 bg-zinc-50/50 text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:border-zinc-800 dark:bg-zinc-800/50">
-                  <th className="px-8 py-6">Representative</th>
-                  <th className="px-5 py-6 text-center">Attendance</th>
-                  <th className="px-5 py-6 text-center">Visits</th>
-                  <th className="px-5 py-6 text-center">Orders</th>
-                  <th className="px-5 py-6 text-center">Leads</th>
-                  <th className="px-5 py-6 text-center">Expenses</th>
-                  <th className="px-5 py-6 text-center">Distance</th>
-                  <th className="px-5 py-6 text-center">Field Effort</th>
-                  <th className="px-5 py-6 text-center">Compliance</th>
-                  <th className="px-5 py-6 text-right">Total Sales</th>
-                  <th className="px-8 py-6 text-right">Details</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
-                {report.map((row) => (
-                  <tr key={row.rep_id} className="group transition-colors hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50">
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100 text-[12px] font-black text-zinc-500 dark:bg-zinc-800">
-                          {row.rep_name.charAt(0)}
-                        </div>
-                        <p className="text-[14px] font-black text-zinc-900 dark:text-zinc-100">{row.rep_name}</p>
-                      </div>
-                    </td>
-                    <td className="px-5 py-6 text-center">
-                      <span className="inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg bg-indigo-50 px-2 text-[12px] font-black text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400">
-                        {row.attendance_count}
-                      </span>
-                    </td>
-                    <td className="px-5 py-6 text-center">
-                      <span className="inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg bg-blue-50 px-2 text-[12px] font-black text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
-                        {row.visit_count}
-                      </span>
-                    </td>
-                    <td className="px-5 py-6 text-center">
-                      <span className="inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg bg-orange-50 px-2 text-[12px] font-black text-orange-600 dark:bg-orange-900/20 dark:text-orange-400">
-                        {row.orders_count}
-                      </span>
-                    </td>
-                    <td className="px-5 py-6 text-center">
-                      <span className="inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg bg-emerald-50 px-2 text-[12px] font-black text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">
-                        {row.leads_count}
-                      </span>
-                    </td>
-                    <td className="px-5 py-6 text-center">
-                      <span className="inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg bg-zinc-50 px-2 text-[12px] font-black text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                        Rs.{row.expenses_sum.toLocaleString()}
-                      </span>
-                    </td>
-                    <td className="px-5 py-6 text-center">
-                      <span className="inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg bg-orange-50 px-2 text-[12px] font-black text-orange-600 dark:bg-orange-900/20 dark:text-orange-400">
-                        {row.distance_km.toFixed(1)} km
-                      </span>
-                    </td>
-                    <td className="px-5 py-6">
-                      <div className="flex flex-col items-center gap-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[9px] font-black uppercase tracking-tight text-zinc-400">Walk:</span>
-                          <span className="text-[11px] font-black text-indigo-600 dark:text-indigo-400">
-                            {Math.floor(row.walking_ms / (1000 * 60 * 60))}h {Math.floor((row.walking_ms % (1000 * 60 * 60)) / (1000 * 60))}m
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[9px] font-black uppercase tracking-tight text-zinc-400">Ride:</span>
-                          <span className="text-[11px] font-black text-blue-600 dark:text-blue-400">
-                            {Math.floor(row.driving_ms / (1000 * 60 * 60))}h {Math.floor((row.driving_ms % (1000 * 60 * 60)) / (1000 * 60))}m
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-6 text-center">
-                      <div className="flex flex-col items-center gap-1">
-                        <span className={`inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg px-2 text-[12px] font-black ${
-                          row.compliance_count > 0 
-                            ? (row.compliance_approved_count === row.compliance_count ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20" : "bg-red-50 text-red-600 dark:bg-red-900/20")
-                            : "bg-zinc-50 text-zinc-400 dark:bg-zinc-800"
-                        }`}>
-                          {row.compliance_approved_count}/{row.compliance_count}
-                        </span>
-                        {row.compliance_count > 0 && (
-                          <span className="text-[9px] font-bold uppercase tracking-tight text-zinc-400">Approved</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-5 py-6 text-right">
-                      <p className="text-[16px] font-black text-zinc-900 dark:text-zinc-100">Rs.{row.total_sales.toLocaleString()}</p>
-                    </td>
-                    <td className="px-8 py-6 text-right">
-                      <button 
-                        onClick={() => setSelectedRep(row)}
-                        className="whitespace-nowrap rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-400 transition-all hover:bg-[#f4a261] hover:text-white dark:border-zinc-800 dark:bg-zinc-800 dark:hover:bg-[#f4a261]"
-                      >
-                        View Details
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="space-y-6">
+          <div className="grid gap-6">
+            {report.map((row) => (
+              <StaffCard key={row.rep_id} row={row} onViewDetails={() => setSelectedRep(row)} />
+            ))}
+          </div>
+          
+          <div className="flex items-center justify-between px-2 pt-4">
+            <p className="text-sm font-medium text-zinc-500">
+              Showing {report.length} staff members
+            </p>
+            <div className="flex items-center gap-2">
+              <button className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-zinc-100 text-zinc-400 dark:bg-zinc-900 dark:border-zinc-800">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-zinc-100 text-[14px] font-black text-[#5e60ce] shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
+                1
+              </div>
+              <button className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-zinc-100 text-zinc-400 dark:bg-zinc-900 dark:border-zinc-800">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+            </div>
           </div>
         </div>
-      )}
-
-      {selectedRep && (
+      )}   {selectedRep && (
         <PerformanceDetail rep={selectedRep} dateRange={dateRange} onClose={() => setSelectedRep(null)} />
       )}
     </div>
@@ -434,3 +350,128 @@ function NoDataRow({ colSpan }: { colSpan: number }) {
     </tr>
   )
 }
+
+function StaffCard({ row, onViewDetails }: { row: StaffReportItem; onViewDetails: () => void }) {
+  const formatMs = (ms: number) => {
+    const hours = Math.floor(ms / (1000 * 60 * 60));
+    const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${minutes}m`;
+  };
+
+  const lastClockIn = row.last_clock_in ? new Date(row.last_clock_in) : null;
+  const lastClockOut = row.last_clock_out ? new Date(row.last_clock_out) : null;
+
+  return (
+    <div className="group relative flex flex-col gap-8 rounded-[32px] border border-zinc-100 bg-white p-8 shadow-sm transition-all hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 md:flex-row md:items-center">
+      <div className="flex flex-1 items-center gap-6">
+        <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#5e60ce]/10 text-xl font-black text-[#5e60ce] dark:bg-[#5e60ce]/20">
+          {row.rep_name.charAt(0)}
+        </div>
+        <div>
+          <h2 className="text-xl font-black text-zinc-900 dark:text-zinc-100">{row.rep_name}</h2>
+          <div className="mt-2 flex items-center gap-2">
+            <div className={`h-2 w-2 rounded-full ${row.is_on_duty ? "bg-emerald-500 animate-pulse" : "bg-zinc-300"}`} />
+            <span className="text-[13px] font-bold text-zinc-500">{row.is_on_duty ? "On-Duty" : "Off-Duty"}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="h-px bg-zinc-50 dark:bg-zinc-800 md:h-12 md:w-px" />
+
+      <div className="flex flex-[2] flex-col gap-8 md:flex-row md:items-center">
+        <div className="grid flex-1 grid-cols-2 gap-4 lg:grid-cols-3">
+          <div className="flex flex-col gap-1 items-center rounded-2xl bg-zinc-50/50 p-3 dark:bg-zinc-800/50">
+             <span className="text-[9px] font-black uppercase tracking-tight text-zinc-400">Visits</span>
+             <span className="text-[14px] font-black text-[#4361ee]">{row.visit_count.toString().padStart(2, '0')}</span>
+          </div>
+          <div className="flex flex-col gap-1 items-center rounded-2xl bg-zinc-50/50 p-3 dark:bg-zinc-800/50">
+             <span className="text-[9px] font-black uppercase tracking-tight text-zinc-400">Orders</span>
+             <span className="text-[14px] font-black text-[#f4a261]">{row.orders_count.toString().padStart(2, '0')}</span>
+          </div>
+          <div className="flex flex-col gap-1 items-center rounded-2xl bg-zinc-50/50 p-3 dark:bg-zinc-800/50">
+             <span className="text-[9px] font-black uppercase tracking-tight text-zinc-400">Leads</span>
+             <span className="text-[14px] font-black text-[#2ec4b6]">{row.leads_count.toString().padStart(2, '0')}</span>
+          </div>
+          <div className="flex flex-col gap-1 items-center p-2">
+             <span className="text-[9px] font-black uppercase tracking-tight text-zinc-400 text-center">Expenses</span>
+             <span className="text-[13px] font-black text-zinc-900 dark:text-zinc-100">Rs. {row.expenses_sum.toLocaleString()}</span>
+          </div>
+          <div className="flex flex-col gap-1 items-center p-2">
+             <span className="text-[9px] font-black uppercase tracking-tight text-zinc-400 text-center">Distance</span>
+             <span className="text-[13px] font-black text-zinc-900 dark:text-zinc-100">{row.distance_km.toFixed(1)} km</span>
+          </div>
+          <div className="flex flex-col gap-1 items-center p-2">
+             <span className="text-[9px] font-black uppercase tracking-tight text-zinc-400 text-center">Sales</span>
+             <span className="text-[13px] font-black text-zinc-900 dark:text-zinc-100">Rs. {row.total_sales.toLocaleString()}</span>
+          </div>
+        </div>
+
+        <div className="h-px bg-zinc-50 dark:bg-zinc-800 md:h-12 md:w-px" />
+
+        <div className="flex flex-1 flex-col gap-4">
+          <div className="flex items-center gap-3">
+             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-50 dark:bg-zinc-800">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-zinc-400">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+             </div>
+             <div className="flex-1">
+                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">
+                  {row.is_on_duty ? "Shift & Attendance" : "Last Logout"}
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] font-black text-zinc-900 dark:text-zinc-100">
+                    {lastClockIn ? lastClockIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "--:--"}
+                    {lastClockOut && ` - ${lastClockOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                  </span>
+                  {row.is_on_duty && (
+                    <span className="rounded-lg bg-[#5e60ce]/10 px-2 py-0.5 text-[9px] font-black text-[#5e60ce]">Current Session</span>
+                  )}
+                  {!row.is_on_duty && lastClockOut && (
+                    <span className="rounded-lg bg-zinc-50 px-2 py-0.5 text-[9px] font-black text-zinc-400 dark:bg-zinc-800">
+                      {lastClockOut.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </span>
+                  )}
+                </div>
+             </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-50 dark:bg-zinc-800">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-zinc-400">
+                  <path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34"/><path d="m20 12-4-4-4 4"/></svg>
+             </div>
+             <div>
+                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Field Effort</p>
+                <p className="text-[13px] font-black text-zinc-900 dark:text-zinc-100">
+                  Working: <span className="text-[#5e60ce]">{formatMs(row.walking_ms + row.driving_ms)}</span> • Resting: <span className="text-zinc-400">{formatMs(row.still_ms)}</span>
+                </p>
+             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="h-px bg-zinc-50 dark:bg-zinc-800 md:h-12 md:w-px" />
+
+      <div className="flex flex-col items-center gap-4 text-center md:w-32">
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Compliance</p>
+          <div className={`mt-2 inline-flex rounded-full px-3 py-1 text-[11px] font-black ${
+            row.compliance_count > 0 
+              ? (row.compliance_approved_count === row.compliance_count ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/10" : "bg-red-50 text-red-600 dark:bg-red-900/10")
+              : "bg-zinc-50 text-zinc-400 dark:bg-zinc-800"
+          }`}>
+             {row.compliance_approved_count}/{row.compliance_count} {row.compliance_count > 0 ? (row.compliance_approved_count === row.compliance_count ? "Pass" : "Fail") : "NA"}
+          </div>
+        </div>
+        <button 
+          onClick={onViewDetails}
+          className="rounded-2xl bg-[#5e60ce] px-6 py-3 text-[12px] font-black text-white shadow-[0_8px_16px_rgba(94,96,206,0.25)] transition-all hover:scale-105 active:scale-95 group-hover:bg-[#4849a1]"
+        >
+          View Details
+        </button>
+      </div>
+    </div>
+  );
+}
+

@@ -263,7 +263,11 @@ export type StaffReportItem = {
   expenses_sum: number;
   walking_ms: number;
   driving_ms: number;
+  still_ms: number;
   distance_km: number;
+  last_clock_in?: string | null;
+  last_clock_out?: string | null;
+  is_on_duty?: boolean;
 };
 
 export type StaffReportResponse = {

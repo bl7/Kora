@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { Cormorant_Garamond } from "next/font/google";
+import { Header } from "@/components/header";
+import { Footer } from "@/components/footer";
 
 const displaySerif = Cormorant_Garamond({
   subsets: ["latin"],
@@ -53,52 +55,7 @@ function ScrollSection({ children, className = "", id }: { children: React.React
   );
 }
 
-function Header() {
-  const [hasSession, setHasSession] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => {
-        setHasSession(res.ok);
-      })
-      .catch(() => {
-        setHasSession(false);
-      });
-  }, []);
-
-  return (
-    <header className="flex items-center justify-between">
-      <div className="relative flex h-[80px] w-[190px] items-center">
-        <Image
-          src="/logo.svg"
-          alt="SalesSuite logo"
-          width={190}
-          height={80}
-          priority
-          className="dark:hidden"
-        />
-        <Image
-          src="/logo-dark.svg"
-          alt="SalesSuite logo dark"
-          width={190}
-          height={80}
-          priority
-          className="hidden dark:block"
-        />
-      </div>
-      {hasSession === null ? (
-        <div className="h-[42px] w-[120px] animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-800" />
-      ) : (
-        <Link
-          href={hasSession ? "/dashboard" : "/auth/signup"}
-          className="rounded-full bg-zinc-800 px-10 py-3 text-[16px] font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
-        >
-          {hasSession ? "Dashboard" : "Sign up"}
-        </Link>
-      )}
-    </header>
-  );
-}
 
 export default function Home() {
   const structuredData = {
@@ -427,40 +384,7 @@ export default function Home() {
         </div>{/* close inner max-w-7xl wrapper */}
       </main>{/* close main — rounded-b content layer */}
 
-      {/* Footer — in flow after main; only appears when you scroll down (revealed as you reach it) */}
-      <footer className="sticky bottom-0 z-0 -mt-px bg-[#121316] text-zinc-200 [background-image:radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.03),transparent_28%),repeating-linear-gradient(90deg,rgba(255,255,255,0.012)_0px,rgba(255,255,255,0.012)_1px,transparent_1px,transparent_10px)]">
-        <div className="mx-auto max-w-7xl px-8 pb-8 pt-16 md:px-12">
-          <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
-            <div className="flex items-start">
-              <Image src="/icon.svg" alt="SalesSuite icon" width={72} height={72} />
-            </div>
-            <FooterLinks
-              title="Platform"
-              links={["Overview", "Visits", "Leads", "Orders"]}
-            />
-            <FooterLinks
-              title="Company"
-              links={[
-                "About",
-                "Security",
-                { label: "Privacy", href: "/privacy" },
-                { label: "Terms", href: "/terms" },
-              ]}
-            />
-            <FooterLinks title="Connect" links={["Contact", "Support", "WhatsApp"]} />
-          </div>
-          <p className="mt-6 text-xs text-center text-zinc-500">
-            SalesSuite is a product of SalesSuite Private Limited.
-          </p>
-        </div>
-
-        {/* Big SalesSuite wordmark — main attraction of the footer */}
-        <div className="relative h-[clamp(5rem,15vw,16rem)] overflow-hidden">
-          <p className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 select-none text-[clamp(8rem,22vw,24rem)] leading-[0.82] font-semibold tracking-[-0.02em] text-white/95">
-            SalesSuite
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
     </>
   );
@@ -657,26 +581,7 @@ function ContactForm() {
   );
 }
 
-function FooterLinks(props: { title: string; links: (string | { label: string; href: string })[] }) {
-  return (
-    <div>
-      <p className="text-sm font-semibold uppercase tracking-wide text-white">{props.title}</p>
-      <ul className="mt-3 space-y-2 text-sm text-zinc-400">
-        {props.links.map((item) => {
-          const label = typeof item === "string" ? item : item.label;
-          const content = typeof item === "string" ? (
-            item
-          ) : (
-            <Link href={item.href} className="transition-colors hover:text-white">
-              {item.label}
-            </Link>
-          );
-          return <li key={label}>{content}</li>;
-        })}
-      </ul>
-    </div>
-  );
-}
+
 
 function FeatureItem({ title, desc }: { title: string; desc: string }) {
   return (
