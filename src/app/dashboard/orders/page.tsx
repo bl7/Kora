@@ -25,6 +25,8 @@ type Order = {
   status: "received" | "processing" | "shipped" | "closed" | "cancelled";
   notes: string | null;
   total_amount: string;
+  discount_amount: string | null;
+  discount_type: "fixed" | "percentage" | null;
   currency_code: string;
   placed_at: string;
   processed_at: string | null;
@@ -50,6 +52,13 @@ type OrderDetail = Order & {
   shop_contact_name?: string | null;
   cancelled_by_name?: string | null;
 };
+
+/** Compute the discount value in absolute currency units. */
+function calcDiscount(subtotal: number, discountAmount: number, discountType: "fixed" | "percentage" | null): number {
+  if (!discountAmount || discountAmount <= 0) return 0;
+  if (discountType === "percentage") return subtotal * (discountAmount / 100);
+  return discountAmount;
+}
 
 type Shop = { id: string; name: string };
 type Product = { id: string; name: string; sku: string; current_price: string | null; currency_code: string | null; unit: string };
@@ -322,6 +331,8 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
     const [shopId, setShopId] = useState("");
     const [notes, setNotes] = useState("");
     const [orderItems, setOrderItems] = useState<{ productId: string; quantity: number; unitPrice: number; name: string; sku: string }[]>([]);
+    const [discountAmount, setDiscountAmount] = useState(0);
+    const [discountType, setDiscountType] = useState<"fixed" | "percentage">("fixed");
 
     const { data: shopsData } = useSWR<{ ok: boolean; shops: Shop[] }>("/api/manager/shops", fetcher);
     const { data: productsData } = useSWR<{ ok: boolean; products: Product[] }>("/api/manager/products", fetcher);
@@ -348,6 +359,8 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
             body: JSON.stringify({
                 shopId,
                 notes,
+                discountAmount: discountAmount > 0 ? discountAmount : undefined,
+                discountType: discountAmount > 0 ? discountType : undefined,
                 items: orderItems.map(i => ({
                     productId: i.productId,
                     productName: i.name,
@@ -429,6 +442,46 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
                             <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Order Notes / Delivery Instructions</label>
                             <textarea className={`${inputClass} h-32 resize-none`} value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Leave at front desk, fragile items included..." />
                         </div>
+
+                        {/* Discount Section */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Order Discount (Optional)</label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="any"
+                                    placeholder="0"
+                                    className={`${inputClass} flex-1`}
+                                    value={discountAmount || ""}
+                                    onChange={e => setDiscountAmount(Number(e.target.value))}
+                                />
+                                <div className="flex rounded-xl border border-zinc-200 overflow-hidden dark:border-zinc-700">
+                                    <button
+                                        type="button"
+                                        onClick={() => setDiscountType("fixed")}
+                                        className={`px-4 py-2 text-[11px] font-black uppercase tracking-widest transition-all ${
+                                            discountType === "fixed"
+                                                ? "bg-[#f4a261] text-white"
+                                                : "bg-white text-zinc-400 hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                                        }`}
+                                    >
+                                        NPR
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDiscountType("percentage")}
+                                        className={`px-4 py-2 text-[11px] font-black uppercase tracking-widest transition-all ${
+                                            discountType === "percentage"
+                                                ? "bg-[#f4a261] text-white"
+                                                : "bg-white text-zinc-400 hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                                        }`}
+                                    >
+                                        %
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="space-y-6 border-l border-zinc-100 pl-8 dark:border-zinc-800">
@@ -475,13 +528,33 @@ function NewOrderModal({ onClose, onCreated }: { onClose: () => void; onCreated:
                             )}
                         </div>
 
-                        <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800">
-                            <div className="flex justify-between items-baseline mb-6">
-                                <span className="text-[11px] font-black uppercase tracking-widest text-zinc-400">Total Payable</span>
-                                <span className="text-3xl font-black text-zinc-900 dark:text-zinc-100">
-                                    NPR {orderItems.reduce((acc, i) => acc + (i.quantity * i.unitPrice), 0).toLocaleString()}
-                                </span>
-                            </div>
+                        <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800 space-y-3">
+                            {/* Breakdown */}
+                            {(() => {
+                                const subtotal = orderItems.reduce((acc, i) => acc + i.quantity * i.unitPrice, 0);
+                                const discVal = calcDiscount(subtotal, discountAmount, discountType);
+                                const total = subtotal - discVal;
+                                return (
+                                    <>
+                                        <div className="flex justify-between text-[11px] font-bold text-zinc-400">
+                                            <span>SUBTOTAL</span>
+                                            <span>NPR {subtotal.toLocaleString()}</span>
+                                        </div>
+                                        {discVal > 0 && (
+                                            <div className="flex justify-between text-[11px] font-bold text-emerald-600">
+                                                <span>DISCOUNT {discountType === "percentage" ? `(${discountAmount}%)` : ""}</span>
+                                                <span>− NPR {discVal.toLocaleString()}</span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between items-baseline pt-3 border-t border-zinc-100 dark:border-zinc-800">
+                                            <span className="text-[11px] font-black uppercase tracking-widest text-zinc-400">Total Payable</span>
+                                            <span className="text-3xl font-black text-zinc-900 dark:text-zinc-100">
+                                                NPR {total.toLocaleString()}
+                                            </span>
+                                        </div>
+                                    </>
+                                );
+                            })()}
                             <button disabled={working} className="h-14 w-full rounded-2xl bg-[#f4a261] text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-[#f4a261]/20 hover:brightness-110 disabled:opacity-50">
                                 {working ? "Processing Order..." : "Finalize & Place Order"}
                             </button>
@@ -499,6 +572,8 @@ function OrderDetailsDrawer({ orderId, onClose, mutateOrders }: { orderId: strin
     const [isEditing, setIsEditing] = useState(false);
     const [editNotes, setEditNotes] = useState("");
     const [editItems, setEditItems] = useState<{ productId: string; name: string; sku: string; quantity: number; unitPrice: number; notes: string | null }[]>([]);
+    const [editDiscountAmount, setEditDiscountAmount] = useState(0);
+    const [editDiscountType, setEditDiscountType] = useState<"fixed" | "percentage">("fixed");
 
     const { data: orderData, mutate: mutateDetail } = useSWR<{ ok: boolean; order: OrderDetail }>(
         `/api/manager/orders/${orderId}`,
@@ -516,6 +591,8 @@ function OrderDetailsDrawer({ orderId, onClose, mutateOrders }: { orderId: strin
     useEffect(() => {
         if (order && !isEditing) {
             setEditNotes(order.notes || "");
+            setEditDiscountAmount(Number(order.discount_amount || 0));
+            setEditDiscountType((order.discount_type as "fixed" | "percentage") || "fixed");
             setEditItems((order.items || []).map(i => ({
                 productId: i.product_id || "",
                 name: i.product_name,
@@ -554,6 +631,8 @@ function OrderDetailsDrawer({ orderId, onClose, mutateOrders }: { orderId: strin
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
                 notes: editNotes,
+                discountAmount: editDiscountAmount > 0 ? editDiscountAmount : 0,
+                discountType: editDiscountType,
                 items: editItems.map(i => ({
                     productId: i.productId,
                     productName: i.name,
@@ -726,16 +805,104 @@ function OrderDetailsDrawer({ orderId, onClose, mutateOrders }: { orderId: strin
                             )}
                         </div>
 
-                        <div className="mt-6 border-t border-zinc-100 pt-6 flex justify-end dark:border-zinc-800">
-                            <div className="text-right">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Order Total</p>
-                                <p className="text-2xl font-black text-zinc-900 dark:text-zinc-100">
-                                    {order.currency_code} {isEditing 
-                                        ? editItems.reduce((acc, i) => acc + (i.quantity * i.unitPrice), 0).toLocaleString()
-                                        : Number(order.total_amount).toLocaleString()
-                                    }
-                                </p>
+                        {/* Discount editor row (edit mode only) */}
+                        {isEditing && (
+                            <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Order Discount</p>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="any"
+                                        placeholder="0"
+                                        className="flex-1 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm font-bold text-zinc-900 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                                        value={editDiscountAmount || ""}
+                                        onChange={e => setEditDiscountAmount(Number(e.target.value))}
+                                    />
+                                    <div className="flex rounded-xl border border-zinc-200 overflow-hidden dark:border-zinc-700">
+                                        <button
+                                            type="button"
+                                            onClick={() => setEditDiscountType("fixed")}
+                                            className={`px-4 py-2 text-[11px] font-black uppercase tracking-widest transition-all ${
+                                                editDiscountType === "fixed"
+                                                    ? "bg-[#f4a261] text-white"
+                                                    : "bg-white text-zinc-400 hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                                            }`}
+                                        >
+                                            {order.currency_code}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setEditDiscountType("percentage")}
+                                            className={`px-4 py-2 text-[11px] font-black uppercase tracking-widest transition-all ${
+                                                editDiscountType === "percentage"
+                                                    ? "bg-[#f4a261] text-white"
+                                                    : "bg-white text-zinc-400 hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                                            }`}
+                                        >
+                                            %
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
+                        )}
+
+                        <div className="mt-6 border-t border-zinc-100 pt-6 dark:border-zinc-800 space-y-2">
+                            {isEditing ? (
+                                (() => {
+                                    const subtotal = editItems.reduce((acc, i) => acc + i.quantity * i.unitPrice, 0);
+                                    const discVal = calcDiscount(subtotal, editDiscountAmount, editDiscountType);
+                                    const total = subtotal - discVal;
+                                    return (
+                                        <>
+                                            <div className="flex justify-between text-[11px] font-bold text-zinc-400">
+                                                <span>SUBTOTAL</span>
+                                                <span>{order.currency_code} {subtotal.toLocaleString()}</span>
+                                            </div>
+                                            {discVal > 0 && (
+                                                <div className="flex justify-between text-[11px] font-bold text-emerald-600">
+                                                    <span>DISCOUNT {editDiscountType === "percentage" ? `(${editDiscountAmount}%)` : ""}</span>
+                                                    <span>− {order.currency_code} {discVal.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                            <div className="flex justify-end items-baseline pt-2">
+                                                <div className="text-right">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Total Payable</p>
+                                                    <p className="text-2xl font-black text-zinc-900 dark:text-zinc-100">{order.currency_code} {total.toLocaleString()}</p>
+                                                </div>
+                                            </div>
+                                        </>
+                                    );
+                                })()
+                            ) : (
+                                (() => {
+                                    const itemsSubtotal = (order.items || []).reduce((acc, i) => acc + Number(i.line_total), 0);
+                                    const dAmt = Number(order.discount_amount || 0);
+                                    const discVal = calcDiscount(itemsSubtotal, dAmt, order.discount_type);
+                                    return (
+                                        <>
+                                            {discVal > 0 && (
+                                                <>
+                                                    <div className="flex justify-between text-[11px] font-bold text-zinc-400">
+                                                        <span>SUBTOTAL</span>
+                                                        <span>{order.currency_code} {itemsSubtotal.toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-[11px] font-bold text-emerald-600">
+                                                        <span>DISCOUNT {order.discount_type === "percentage" ? `(${dAmt}%)` : ""}</span>
+                                                        <span>− {order.currency_code} {discVal.toLocaleString()}</span>
+                                                    </div>
+                                                </>
+                                            )}
+                                            <div className="flex justify-end items-baseline pt-2">
+                                                <div className="text-right">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Order Total</p>
+                                                    <p className="text-2xl font-black text-zinc-900 dark:text-zinc-100">{order.currency_code} {Number(order.total_amount).toLocaleString()}</p>
+                                                </div>
+                                            </div>
+                                        </>
+                                    );
+                                })()
+                            )}
                         </div>
                     </section>
 
