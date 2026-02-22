@@ -119,10 +119,21 @@ export default function StaffReportPage() {
                         {row.distance_km.toFixed(1)} km
                       </span>
                     </td>
-                    <td className="px-5 py-6 text-center">
-                      <span className="inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg bg-blue-50 px-2 text-[11px] font-black text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
-                        {Math.floor((row.walking_ms + row.driving_ms) / (1000 * 60 * 60))}h {Math.floor(((row.walking_ms + row.driving_ms) % (1000 * 60 * 60)) / (1000 * 60))}m
-                      </span>
+                    <td className="px-5 py-6">
+                      <div className="flex flex-col items-center gap-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-black uppercase tracking-tight text-zinc-400">Walk:</span>
+                          <span className="text-[11px] font-black text-indigo-600 dark:text-indigo-400">
+                            {Math.floor(row.walking_ms / (1000 * 60 * 60))}h {Math.floor((row.walking_ms % (1000 * 60 * 60)) / (1000 * 60))}m
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-black uppercase tracking-tight text-zinc-400">Ride:</span>
+                          <span className="text-[11px] font-black text-blue-600 dark:text-blue-400">
+                            {Math.floor(row.driving_ms / (1000 * 60 * 60))}h {Math.floor((row.driving_ms % (1000 * 60 * 60)) / (1000 * 60))}m
+                          </span>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-5 py-6 text-center">
                       <div className="flex flex-col items-center gap-1">
