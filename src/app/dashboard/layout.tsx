@@ -129,7 +129,11 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               )}
               {group.items.map((item) => {
                 if (item.label === "Warehouse" && session.user.role !== "manager" && session.user.role !== "boss") return null;
-                const active = item.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.href);
+                const active = 
+                  item.href === "/dashboard" ? pathname === "/dashboard" :
+                  item.href === "/dashboard/staff" ? pathname === "/dashboard/staff" || (pathname.startsWith("/dashboard/staff/") && !pathname.startsWith("/dashboard/staff/report")) :
+                  pathname.startsWith(item.href);
+                
                 return (
                   <Link
                     key={item.href}

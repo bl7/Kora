@@ -19,6 +19,7 @@ export default function StaffReportPage() {
   });
 
   const [selectedRep, setSelectedRep] = useState<StaffReportItem | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data, isLoading } = useSWR<StaffReportResponse>(
     `/api/manager/reports/staff-report?dateFrom=${dateRange.from}&dateTo=${dateRange.to}`,
@@ -26,6 +27,9 @@ export default function StaffReportPage() {
   );
 
   const report = data?.report || [];
+  const filteredReport = report.filter(row => row.rep_name.toLowerCase().includes(searchQuery.toLowerCase()));
+
+  const totalDays = Math.max(1, Math.ceil((new Date(dateRange.to).getTime() - new Date(dateRange.from).getTime()) / (1000 * 60 * 60 * 24)) + 1);
 
   return (
     <div className="space-y-10 pb-12">
@@ -36,40 +40,49 @@ export default function StaffReportPage() {
           <p className="text-sm font-medium text-zinc-500">Aggregate metrics for all sales representatives in a given period.</p>
         </div>
 
-        <div className="flex items-center gap-2 rounded-2xl bg-white p-2 shadow-sm dark:bg-zinc-900">
+        <div className="flex flex-col sm:flex-row items-center gap-4">
           <input
-            type="date"
-            value={dateRange.from}
-            onChange={e => setDateRange({ ...dateRange, from: e.target.value })}
-            className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-900 outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-100"
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search staff by name..."
+            className="w-full sm:w-[300px] rounded-2xl border border-zinc-100 bg-white px-4 py-3 text-[13px] font-bold text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
           />
-          <span className="text-zinc-400">–</span>
-          <input
-            type="date"
-            value={dateRange.to}
-            onChange={e => setDateRange({ ...dateRange, to: e.target.value })}
-            className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-900 outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-100"
-          />
+          <div className="flex w-full sm:w-auto items-center gap-2 rounded-2xl bg-white p-2 shadow-sm dark:bg-zinc-900">
+            <input
+              type="date"
+              value={dateRange.from}
+              onChange={e => setDateRange({ ...dateRange, from: e.target.value })}
+              className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-900 outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-100"
+            />
+            <span className="text-zinc-400">–</span>
+            <input
+              type="date"
+              value={dateRange.to}
+              onChange={e => setDateRange({ ...dateRange, to: e.target.value })}
+              className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-900 outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-100"
+            />
+          </div>
         </div>
       </div>
 
       {isLoading ? (
         <LoadingState />
-      ) : report.length === 0 ? (
+      ) : filteredReport.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-[40px] border border-dashed border-zinc-200 py-20 dark:border-zinc-800">
           <p className="text-sm font-bold text-zinc-400">No data found for this period.</p>
         </div>
       ) : (
         <div className="space-y-6">
           <div className="grid gap-6">
-            {report.map((row) => (
-              <StaffCard key={row.rep_id} row={row} onViewDetails={() => setSelectedRep(row)} />
+            {filteredReport.map((row) => (
+              <StaffCard key={row.rep_id} row={row} totalDays={totalDays} onViewDetails={() => setSelectedRep(row)} />
             ))}
           </div>
           
           <div className="flex items-center justify-between px-2 pt-4">
             <p className="text-sm font-medium text-zinc-500">
-              Showing {report.length} staff members
+              Showing {filteredReport.length} staff members
             </p>
             <div className="flex items-center gap-2">
               <button className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-zinc-100 text-zinc-400 dark:bg-zinc-900 dark:border-zinc-800">
@@ -351,15 +364,12 @@ function NoDataRow({ colSpan }: { colSpan: number }) {
   )
 }
 
-function StaffCard({ row, onViewDetails }: { row: StaffReportItem; onViewDetails: () => void }) {
+function StaffCard({ row, totalDays, onViewDetails }: { row: StaffReportItem; totalDays: number; onViewDetails: () => void }) {
   const formatMs = (ms: number) => {
     const hours = Math.floor(ms / (1000 * 60 * 60));
     const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
     return `${hours}h ${minutes}m`;
   };
-
-  const lastClockIn = row.last_clock_in ? new Date(row.last_clock_in) : null;
-  const lastClockOut = row.last_clock_out ? new Date(row.last_clock_out) : null;
 
   return (
     <div className="group relative flex flex-col gap-8 rounded-[32px] border border-zinc-100 bg-white p-8 shadow-sm transition-all hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 md:flex-row md:items-center">
@@ -417,21 +427,15 @@ function StaffCard({ row, onViewDetails }: { row: StaffReportItem; onViewDetails
              </div>
              <div className="flex-1">
                 <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">
-                  {row.is_on_duty ? "Shift & Attendance" : "Last Logout"}
+                  Attendance Days
                 </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-black text-zinc-900 dark:text-zinc-100">
-                    {lastClockIn ? lastClockIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "--:--"}
-                    {lastClockOut && ` - ${lastClockOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <span className="text-[14px] font-black text-zinc-900 dark:text-zinc-100">
+                    {row.attendance_count}
                   </span>
-                  {row.is_on_duty && (
-                    <span className="rounded-lg bg-[#5e60ce]/10 px-2 py-0.5 text-[9px] font-black text-[#5e60ce]">Current Session</span>
-                  )}
-                  {!row.is_on_duty && lastClockOut && (
-                    <span className="rounded-lg bg-zinc-50 px-2 py-0.5 text-[9px] font-black text-zinc-400 dark:bg-zinc-800">
-                      {lastClockOut.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                    </span>
-                  )}
+                  <span className="text-[11px] font-bold text-zinc-400">
+                    of {totalDays} days
+                  </span>
                 </div>
              </div>
           </div>

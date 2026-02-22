@@ -450,110 +450,127 @@ export default function StaffPage() {
           ))}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-[24px] border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <table className="w-full text-left text-[11px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-            <thead>
-              <tr className="border-b border-zinc-100 dark:border-zinc-800">
-                <th className="px-8 py-5 font-semibold">STAFF NAME</th>
-                <th className="px-5 py-5 font-semibold">STATUS</th>
-                <th className="px-5 py-5 font-semibold text-center">CLOCK IN</th>
-                <th className="px-5 py-5 font-semibold text-center">CLOCK OUT</th>
-                <th className="px-5 py-5 font-semibold text-center">DURATION</th>
-                <th className="px-8 py-5 text-right font-semibold">ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody className="normal-case tracking-normal">
-              {staff.map((s: Staff) => {
-                const log = filteredLogs.find((l: AttendanceLog) => l.rep_company_user_id === s.company_user_id);
-                const isCurrentlyIn = log && !log.clock_out_at;
-                const isLate = log && new Date(log.clock_in_at).getHours() >= 9;
+        <div className="space-y-6">
+          <div className="grid gap-4">
+            {staff.map((s: Staff) => {
+              const log = filteredLogs.find((l: AttendanceLog) => l.rep_company_user_id === s.company_user_id);
+              const isCurrentlyIn = log && !log.clock_out_at;
+              const isLate = log && new Date(log.clock_in_at).getHours() >= 9;
 
-                const clockIn = log ? new Date(log.clock_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : "--:--";
-                const clockOut = log?.clock_out_at ? new Date(log.clock_out_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : "--:--";
-                
-                let duration = "--:-- hrs";
-                if (log) {
-                  const start = new Date(log.clock_in_at).getTime();
-                  const end = log.clock_out_at ? new Date(log.clock_out_at).getTime() : Date.now();
-                  const diff = Math.floor((end - start) / (1000 * 60));
-                  const h = Math.floor(diff / 60);
-                  const m = diff % 60;
-                  duration = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} hrs`;
-                }
+              const clockIn = log ? new Date(log.clock_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : "--:--";
+              const clockOut = log?.clock_out_at ? new Date(log.clock_out_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : "--:--";
+              
+              let duration = "--:-- hrs";
+              if (log) {
+                const start = new Date(log.clock_in_at).getTime();
+                const end = log.clock_out_at ? new Date(log.clock_out_at).getTime() : Date.now();
+                const diff = Math.floor((end - start) / (1000 * 60));
+                const h = Math.floor(diff / 60);
+                const m = diff % 60;
+                duration = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} hrs`;
+              }
 
-                return (
-                  <tr key={s.company_user_id} className="border-b border-zinc-50 last:border-0 hover:bg-zinc-50/50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/20">
-                    <td className="px-8 py-4">
-                      <div className="flex items-center gap-4">
-                        <div className="relative">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-[13px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                            {initials(s.full_name)}
-                          </div>
-                          {isCurrentlyIn && (
-                            <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 dark:border-zinc-900" />
-                          )}
-                        </div>
-                        <Link href={`/dashboard/staff/${s.company_user_id}`} className="group cursor-pointer">
-                          <div className="text-[14px] font-bold text-zinc-900 group-hover:text-[#f4a261] transition-colors dark:text-zinc-100">{s.full_name}</div>
-                          <div className="text-[11px] text-zinc-400 dark:text-zinc-500">
-                             {s.role === "back_office" ? "Back office" : s.role === "boss" ? "Admin" : s.role === "rep" ? "Sales Department" : s.role === "dispatch_supervisor" ? "Dispatch Supervisor" : s.role}
-                          </div>
-                        </Link>
+              const roleDisplay = s.role === "back_office" ? "Back office" : s.role === "boss" ? "Admin" : s.role === "rep" ? "Sales Department" : s.role === "dispatch_supervisor" ? "Dispatch Sup." : s.role;
+
+              return (
+                <div key={s.company_user_id} className="group relative flex flex-col gap-6 rounded-[32px] border border-zinc-100 bg-white p-6 shadow-sm transition-all hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 md:flex-row md:items-center">
+                  
+                  {/* Left Section: Name and Role */}
+                  <div className="flex flex-[1.5] items-center gap-6">
+                    <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#5e60ce]/10 text-xl font-black text-[#5e60ce] dark:bg-[#5e60ce]/20">
+                      {initials(s.full_name)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Link href={`/dashboard/staff/${s.company_user_id}`} className="hover:text-[#f4a261] transition-colors focus:outline-none">
+                        <h2 className="text-xl font-black truncate text-zinc-900 dark:text-zinc-100">{s.full_name}</h2>
+                      </Link>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                         {/* Role */}
+                         <span className="rounded-lg bg-zinc-50 px-2 py-0.5 text-[10px] uppercase font-black text-zinc-400 tracking-wider dark:bg-zinc-800">
+                           {roleDisplay}
+                         </span>
+                         {/* Status Indicator */}
+                         {s.role === "rep" && log && (
+                           <div className="flex items-center gap-1.5 rounded-lg bg-zinc-50 px-2 py-0.5 dark:bg-zinc-800">
+                             <div className={`h-2 w-2 rounded-full ${isCurrentlyIn ? "bg-emerald-500 animate-pulse" : "bg-zinc-300 dark:bg-zinc-600"}`} />
+                             <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500">{isCurrentlyIn ? "Currently In" : "Clocked Out"}</span>
+                           </div>
+                         )}
+                         {s.role === "rep" && !log && (
+                            <div className="flex items-center gap-1.5 rounded-lg bg-zinc-50 px-2 py-0.5 dark:bg-zinc-800">
+                             <div className="h-2 w-2 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+                             <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Absent</span>
+                           </div>
+                         )}
                       </div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex flex-col gap-1">
-                        {log ? (
-                          <>
-                            <span className={`inline-flex w-fit rounded-full px-3 py-1 text-[10px] font-bold ${
-                              isCurrentlyIn 
-                                ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400" 
-                                : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-                            }`}>
-                              {isCurrentlyIn ? "Currently In" : "Clocked Out"}
-                            </span>
-                            {isLate && (
-                              <span className="inline-flex w-fit rounded-full bg-orange-50 px-3 py-0.5 text-[9px] font-bold text-orange-600 dark:bg-orange-900/20 dark:text-orange-400">
-                                LATE ARRIVAL
+                    </div>
+                  </div>
+
+                  {s.role === "rep" && <div className="h-px bg-zinc-50 dark:bg-zinc-800 md:h-12 md:w-px shrink-0" />}
+
+                  {/* Middle Section: Attendance details */}
+                  {s.role === "rep" ? (
+                    <div className="flex flex-[2] flex-col sm:flex-row gap-6">
+                      {/* Timing block */}
+                      <div className="flex flex-1 items-center gap-3">
+                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-50 text-zinc-400 dark:bg-zinc-800">
+                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                         </div>
+                         <div className="flex-1 min-w-0">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Time Log</p>
+                            <div className="flex items-baseline gap-2 mt-0.5">
+                              <span className={`${isLate ? "text-red-500" : "text-zinc-900 dark:text-zinc-100"} text-[14px] font-black`}>
+                                {clockIn}
                               </span>
-                            )}
-                          </>
-                        ) : (
-                          <span className="text-[11px] text-zinc-400">—</span>
-                        )}
+                              <span className="text-zinc-400 text-[11px] font-bold">
+                                to {clockOut}
+                              </span>
+                            </div>
+                         </div>
                       </div>
-                    </td>
-                    <td className="px-5 py-4 text-center font-medium text-zinc-900 dark:text-zinc-100">
-                      {isLate ? <span className="text-red-500">{clockIn}</span> : clockIn}
-                    </td>
-                    <td className="px-5 py-4 text-center text-zinc-400 dark:text-zinc-500">{clockOut}</td>
-                    <td className="px-5 py-4 text-center font-bold text-zinc-900 dark:text-zinc-100">{duration}</td>
-                    <td className="px-8 py-4 text-right">
-                      <div className="flex items-center justify-end font-medium">
-                        <button
-                          type="button"
-                          ref={menuOpenId === s.company_user_id ? menuRef : null}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMenuOpenId((id) => (id === s.company_user_id ? null : s.company_user_id))
-                          }}
-                          className="rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-700"
-                        >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
-                        </button>
+                      
+                      {/* Duration block */}
+                      <div className="flex flex-1 items-center gap-3">
+                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-50 text-zinc-400 dark:bg-zinc-800">
+                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                         </div>
+                         <div className="flex-1 min-w-0">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Duration</p>
+                            <div className="mt-0.5">
+                              <span className="text-[14px] font-black text-zinc-900 dark:text-zinc-100">{duration}</span>
+                            </div>
+                         </div>
                       </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <div className="flex items-center justify-between border-t border-zinc-100 px-8 py-5 dark:border-zinc-800">
+                    </div>
+                  ) : (
+                    <div className="hidden flex-[2] md:block" />
+                  )}
+
+                  <div className="h-px bg-zinc-50 dark:bg-zinc-800 md:h-12 md:w-px shrink-0" />
+
+                  {/* Right Section: Actions */}
+                  <div className="flex items-center gap-4 text-center justify-end md:w-24">
+                     <button
+                       type="button"
+                       ref={menuOpenId === s.company_user_id ? menuRef : null}
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         setMenuOpenId((id) => (id === s.company_user_id ? null : s.company_user_id))
+                       }}
+                       className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-50 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
+                     >
+                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                     </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          
+          <div className="flex items-center justify-between px-2 pt-2">
             <span className="text-[11px] font-bold uppercase text-zinc-400">
               SHOWING 1-{staff.length} OF {counts[tab] ?? 0} EMPLOYEES
             </span>
-            <div className="flex gap-1.5">
-            </div>
           </div>
         </div>
       )}
