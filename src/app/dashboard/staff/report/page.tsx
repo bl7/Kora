@@ -71,6 +71,8 @@ export default function StaffReportPage() {
                   <th className="px-5 py-6 text-center">Orders</th>
                   <th className="px-5 py-6 text-center">Leads</th>
                   <th className="px-5 py-6 text-center">Expenses</th>
+                  <th className="px-5 py-6 text-center">Distance</th>
+                  <th className="px-5 py-6 text-center">Field Effort</th>
                   <th className="px-5 py-6 text-center">Compliance</th>
                   <th className="px-5 py-6 text-right">Total Sales</th>
                   <th className="px-8 py-6 text-right">Details</th>
@@ -110,6 +112,16 @@ export default function StaffReportPage() {
                     <td className="px-5 py-6 text-center">
                       <span className="inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg bg-zinc-50 px-2 text-[12px] font-black text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                         Rs.{row.expenses_sum.toLocaleString()}
+                      </span>
+                    </td>
+                    <td className="px-5 py-6 text-center">
+                      <span className="inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg bg-orange-50 px-2 text-[12px] font-black text-orange-600 dark:bg-orange-900/20 dark:text-orange-400">
+                        {row.distance_km.toFixed(1)} km
+                      </span>
+                    </td>
+                    <td className="px-5 py-6 text-center">
+                      <span className="inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg bg-blue-50 px-2 text-[11px] font-black text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
+                        {Math.floor((row.walking_ms + row.driving_ms) / (1000 * 60 * 60))}h {Math.floor(((row.walking_ms + row.driving_ms) % (1000 * 60 * 60)) / (1000 * 60))}m
                       </span>
                     </td>
                     <td className="px-5 py-6 text-center">
@@ -185,10 +197,12 @@ function PerformanceDetail({ rep, dateRange, onClose }: { rep: StaffReportItem; 
            ) : (
              <div className="space-y-12 pb-10">
                {/* Summary Stats in Grid */}
-               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                   <DetailStatCard label="Total Sales" value={`Rs.${rep.total_sales.toLocaleString()}`} icon="💰" color="emerald" />
                   <DetailStatCard label="Attendance" value={data?.attendance.length || 0} icon="📅" color="indigo" />
                   <DetailStatCard label="Completed Visits" value={data?.visits.length || 0} icon="📍" color="blue" />
+                  <DetailStatCard label="Distance Cover" value={`${rep.distance_km.toFixed(1)} km`} icon="🚗" color="emerald" />
+                  <DetailStatCard label="Walk/Drive Time" value={`${Math.floor((rep.walking_ms + rep.driving_ms) / 3600000)}h ${Math.floor((rep.walking_ms + rep.driving_ms) % 3600000 / 60000)}m`} icon="🚶" color="indigo" />
                   <DetailStatCard label="New Leads" value={data?.leads.length || 0} icon="🎯" color="orange" />
                </div>
 

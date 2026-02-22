@@ -261,6 +261,9 @@ export type StaffReportItem = {
   compliance_count: number;
   compliance_approved_count: number;
   expenses_sum: number;
+  walking_ms: number;
+  driving_ms: number;
+  distance_km: number;
 };
 
 export type StaffReportResponse = {
