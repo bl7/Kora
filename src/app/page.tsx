@@ -330,12 +330,12 @@ export default function Home() {
 
             {/* Phone — middle as connector; tilted, overlaps both on desktop; between panels on mobile */}
             <div className="relative z-10 flex items-center justify-center py-4 md:absolute md:inset-0 md:pointer-events-none md:py-0">
-              <div className="relative w-[200px] drop-shadow-2xl md:absolute md:left-1/2 md:top-1/2 md:my-8 md:w-[260px] md:-translate-x-1/2 md:-translate-y-1/2 md:rotate-[6deg] md:pointer-events-auto">
+              <div className="relative w-[240px] drop-shadow-2xl md:absolute md:left-1/2 md:top-1/2 md:my-8 md:w-[340px] md:-translate-x-1/2 md:-translate-y-1/2 md:rotate-[6deg] md:pointer-events-auto">
                 <Image
                   src="/phone.png"
                   alt="SalesSuite app on phone"
-                  width={260}
-                  height={540}
+                  width={340}
+                  height={706}
                   className="h-auto w-full"
                 />
               </div>
