@@ -40,7 +40,7 @@ export default function BossLoginPage() {
     setLoading(false);
 
     if (!res.ok || !data.ok) {
-      setError(data.error ?? "Login failed");
+      setError(data.error ?? (data as any).message ?? "Login failed");
       return;
     }
 
