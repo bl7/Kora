@@ -44,6 +44,7 @@ export default function SignupPage() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         companyName,
+        companySlug: companyName.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, ""),
         address: companyAddress.trim(),
         fullName,
         email,
@@ -53,11 +54,11 @@ export default function SignupPage() {
       }),
     });
 
-    const data = (await response.json()) as SignupResponse;
+    const data = (await response.json()) as SignupResponse & { message?: string };
     setLoading(false);
 
     if (!response.ok || !data.ok) {
-      setError(data.error ?? "Signup failed");
+      setError(data.error ?? data.message ?? "Signup failed");
       return;
     }
 
